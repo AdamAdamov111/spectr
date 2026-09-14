@@ -96,3 +96,9 @@
 .auto-line { height: 1px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
 .auto-line i { display: block; height: 100%; background: #fff; transform-origin: left; animation: sp-grow-x 6s linear both; }
 .locked-timer { font-family: var(--font-mono); font-size: 44px; font-weight: 500; letter-spacing: 0.1em; color: #ec9a3c; text-align: center; }
+
+.op-line { display: flex; align-items: center; gap: 14px; padding: 4px 0; }
+.op-line .op-av { width: 44px; height: 44px; border: 1px solid rgba(255, 255, 255, 0.5); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; letter-spacing: 0.06em; color: #fff; }
+.op-txt { display: flex; flex-direction: column; gap: 3px; }
+.op-txt b { font-size: 15px; font-weight: 600; }
+.op-txt span { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(246, 247, 249, 0.5); }

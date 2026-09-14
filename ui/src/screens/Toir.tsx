@@ -45,7 +45,7 @@ export function ToirScreen() {
         {e && <button className="btn btn-primary" onClick={() => openAction('create_maintenance_order', e.id, { kind: 'Диагностика', priority: (e.props.health_index as number) < 0.4 ? 'Критический' : 'Высокий' })}><Wrench size={13} /> Создать заявку · {e.label}</button>}
       </div>
       <div className="screen-b">
-        <div className="toir-table"><DataTable rows={rows} columns={columns} selected={sel} onSelect={r => { setSel(r.id); openObject(r.id) }} onOpen={r => openObject(r.id, { tab: true })} onExplain={r => openExplain(r.id, 'health_index')} footer={<><span>j/k · Enter — карточка · e — explain индекса</span><span className="grow" /><span>функция equipment_health_index@2.1.0 · explain до замеров и заявок</span></>} /></div>
+        <div className="toir-table"><DataTable rows={rows} columns={columns} selected={sel} onSelect={r => { setSel(r.id); openObject(r.id) }} onOpen={r => openObject(r.id, { tab: true })} onExplain={r => openExplain(r.id, 'health_index')} footer={<><span>{rows.length} единиц</span><span className="grow" /><span>Индекс: equipment_health_index@2.1.0</span></>} /></div>
         <div className="toir-side">{e ? <Telemetry e={e} key={e.id} /> : <Empty text="Выберите оборудование" />}</div>
       </div>
     </div>

@@ -9,13 +9,12 @@ import { ONTOLOGY_VERSION } from '../data/ontology'
 
 type Phase = 'login' | 'checking' | 'stamp' | 'purpose' | 'leaving' | 'locked'
 const STEPS = ['Подпись токена', 'Политики доступа', 'Цели обработки', 'Допуск']
-const ROLE_SHORT: Record<string, string> = { sc_head: 'Сит. центр', toir_eng: 'ТОиР', seb_analyst: 'СЭБ', analyst_open: 'Аналитик' }
 const initials = (name: string) => name.split(' ').map(x => x[0]).join('').slice(0, 2)
 
 export function Login({ onDone }: { onDone: (s: Session) => void }) {
   const rm = useMemo(() => reducedMotion(), [])
   const [phase, setPhase] = useState<Phase>('login')
-  const [user, setUser] = useState<UserDef>(USERS[0])
+  const [user] = useState<UserDef>(USERS[0])
   const [key, setKey] = useState('')
   const [step, setStep] = useState(-1)
   const [stepTs, setStepTs] = useState<number[]>([])
@@ -31,7 +30,7 @@ export function Login({ onDone }: { onDone: (s: Session) => void }) {
   const later = (fn: () => void, ms: number) => { const t = window.setTimeout(fn, rm ? 0 : ms); timers.current.push(t); return t }
 
   useEffect(() => { later(() => { world(); void seedAudit() }, 50); const id = setInterval(() => setClock(new Date()), 1000); return () => { timers.current.forEach(clearTimeout); clearInterval(id) } }, [])
-  useEffect(() => { if (phase === 'login') later(() => keyRef.current?.focus(), rm ? 0 : 2000) }, [phase, user])
+  useEffect(() => { if (phase === 'login') later(() => keyRef.current?.focus(), rm ? 0 : 2000) }, [phase])
   useEffect(() => { if (phase !== 'locked') return; setLockLeft(30); const id = window.setInterval(() => setLockLeft(x => { if (x <= 1) { clearInterval(id); setFailures(0); setPhase('login'); setError(null); return 0 } return x - 1 }), 1000); return () => clearInterval(id) }, [phase])
   useEffect(() => {
     if (phase !== 'purpose' || purposeSel) return
@@ -81,10 +80,8 @@ export function Login({ onDone }: { onDone: (s: Session) => void }) {
 
         {phase === 'login' && (
           <form className={`panel-lg entry ${shake ? 'shake' : ''}`} onSubmit={e => { e.preventDefault(); submit() }}>
-            <div className="lg-h"><span>Оператор</span><b>{user.roleLabel}</b></div>
-            <div className="ops" role="radiogroup" aria-label="Оператор">
-              {USERS.map(u => <button type="button" key={u.login} className={`op ${u.login === user.login ? 'sel' : ''}`} onClick={() => { setUser(u); setKey(''); setError(null) }} role="radio" aria-checked={u.login === user.login}><span className="op-av">{initials(u.name)}</span><span className="op-name">{u.name}</span><span className="op-role">{ROLE_SHORT[u.login]}</span></button>)}
-            </div>
+            <div className="lg-h"><span>Оператор</span><b>{user.login}</b></div>
+            <div className="op-line"><span className="op-av">{initials(user.name)}</span><span className="op-txt"><b>{user.name}</b><span>{user.roleLabel} · допуск {user.clearance.level}</span></span></div>
             <div className="field-lg">
               <label htmlFor="lg-pass">Пароль</label>
               <div className={`entry-row ${error ? 'error' : ''}`}>

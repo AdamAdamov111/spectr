@@ -1,18 +1,17 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Command, X, Plus, ChevronUp, ChevronDown, Sun, Moon, Eye, EyeOff, Keyboard, LogOut, PanelRightClose, PanelRightOpen, Pin, Search } from 'lucide-react'
+import { X, Plus, Bell, Search, Keyboard, LogOut, PanelRightOpen, ChevronsLeft, ChevronsRight, Sun, Moon, Eye, EyeOff, Monitor } from 'lucide-react'
 import { useStore, SCREENS, type ScreenKey, type Tab } from './store'
 import { SCREEN_ICONS, TYPE_ICONS } from '../components/icons'
 import { Kbd, Toasts } from '../components/ui'
 import { LogoMark } from '../components/Logo'
-import { quickSearch, world, typeFreshness, subscribeEvents, get as getObject, logRead } from '../data/api'
+import { quickSearch, world, subscribeEvents, get as getObject, logRead } from '../data/api'
 import { TYPES } from '../data/ontology'
-import { PURPOSE_LABELS, effectiveLevel, effectiveCategories } from '../data/security'
-import { fmtTime, fmtAgo } from '../data/rng'
+import { PURPOSE_LABELS, effectiveLevel } from '../data/security'
+import { fmtTime } from '../data/rng'
 import { Situation } from '../screens/Situation'
 import { SearchScreen } from '../screens/Search'
 import { GraphScreen } from '../screens/Graph'
 import { MapScreen } from '../screens/MapScreen'
-const ToirScreen = lazy(() => import('../screens/Toir').then(m => ({ default: m.ToirScreen })))
 import { ProcurementScreen } from '../screens/Procurement'
 import { AuditScreen } from '../screens/Audit'
 import { OntologyScreen } from '../screens/Ontology'
@@ -23,6 +22,7 @@ import { ObjectCard } from '../screens/ObjectCard'
 import { ExplainView } from '../screens/Explain'
 import { ActionScreen } from '../screens/ActionScreen'
 import { Inspector } from '../screens/Inspector'
+const ToirScreen = lazy(() => import('../screens/Toir').then(m => ({ default: m.ToirScreen })))
 
 const SCREEN_COMPONENTS: Record<ScreenKey, () => ReactNode> = {
   situation: () => <Situation />, search: () => <SearchScreen />, graph: () => <GraphScreen />, map: () => <MapScreen />, toir: () => <Suspense fallback={<div className="empty">Загрузка модуля телеметрии…</div>}><ToirScreen /></Suspense>, procurement: () => <ProcurementScreen />,
@@ -31,30 +31,33 @@ const SCREEN_COMPONENTS: Record<ScreenKey, () => ReactNode> = {
 
 export function Shell() {
   const tabs = useStore(s => s.tabs); const activeTab = useStore(s => s.activeTab)
-  const inspectorOpen = useStore(s => s.inspector.open)
-  const tickerOpen = useStore(s => s.tickerOpen)
+  const inspector = useStore(s => s.inspector)
   const simulation = useStore(s => s.simulation)
   const connection = useStore(s => s.connection)
   const palette = useStore(s => s.palette); const help = useStore(s => s.help)
+  const collapsed = useStore(s => s.settings.sidebar === 'collapsed')
   const session = useStore(s => s.session)
   useShortcuts()
   useHashSync()
   const tab = tabs.find(t => t.id === activeTab) || tabs[0]
   if (!session) return null
+  const sameAsTab = tab.kind === 'object' && inspector.mode === 'object' && inspector.objectId === tab.objectId
+  const inspectorVisible = inspector.open && !sameAsTab && (!!inspector.objectId || inspector.mode === 'summary')
   return (
-    <div className={`shell ${tickerOpen ? 'ticker-open' : ''}`}>
+    <div className={`shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
       {connection !== 'ok' && <div className={`status-bar ${connection}`} />}
-      <Rail />
-      <TopBar />
-      <TabsBar />
-      <div className={`workspace ${inspectorOpen ? '' : 'inspector-closed'}`}>
-        <div className="work-area" key={tab.id}>
-          <TabContent tab={tab} />
-          {simulation && <div className="watermark">СИМУЛЯЦИЯ</div>}
+      <Sidebar />
+      <div className="main">
+        <TopBar />
+        {tabs.length > 1 && <TabsBar />}
+        <div className={`workspace ${inspectorVisible ? '' : 'inspector-closed'}`}>
+          <div className="work-area" key={tab.id}>
+            <TabContent tab={tab} />
+            {simulation && <div className="watermark">СИМУЛЯЦИЯ</div>}
+          </div>
+          {inspectorVisible ? <Inspector /> : inspector.objectId && !sameAsTab ? <button className="btn-icon inspector-toggle" title="Открыть инспектор" onClick={() => useStore.getState().inspect({ open: true })}><PanelRightOpen /></button> : null}
         </div>
-        {inspectorOpen ? <Inspector /> : <button className="btn-icon inspector-toggle" title="Открыть инспектор" onClick={() => useStore.getState().inspect({ open: true })}><PanelRightOpen size={16} /></button>}
       </div>
-      <Ticker />
       {palette && <CommandPalette />}
       {help && <Help />}
       <Toasts />
@@ -71,68 +74,94 @@ function TabContent({ tab }: { tab: Tab }) {
   return null
 }
 
-function Rail() {
+const GROUPS: { title: string; keys: ScreenKey[] }[] = [
+  { title: 'Операции', keys: ['situation', 'map', 'toir', 'procurement'] },
+  { title: 'Данные', keys: ['search', 'graph', 'ontology', 'branches'] },
+  { title: 'Контроль', keys: ['audit', 'agent', 'admin'] },
+]
+
+function Sidebar() {
   const tabs = useStore(s => s.tabs); const activeTab = useStore(s => s.activeTab); const openScreen = useStore(s => s.openScreen); const setHelp = useStore(s => s.setHelp)
+  const settings = useStore(s => s.settings); const setSettings = useStore(s => s.setSettings)
+  const session = useStore(s => s.session)!
+  const collapsed = settings.sidebar === 'collapsed'
   const tab = tabs.find(t => t.id === activeTab)
   return (
-    <nav className="rail">
-      <div className="rail-logo" title="SPECTR"><LogoMark size={34} /></div>
-      {SCREENS.map(s => { const I = SCREEN_ICONS[s.key]; return <button key={s.key} className={`rail-btn ${tab?.kind === 'screen' && tab.screen === s.key ? 'active' : ''}`} onClick={() => openScreen(s.key)} aria-label={s.label}><I size={22} strokeWidth={1.75} /><span className="rail-label">{s.label}<Kbd k={s.hint} /></span></button> })}
-      <div className="rail-bottom" />
-      <button className="rail-btn" onClick={() => setHelp(true)} aria-label="Подсказка по клавишам"><Keyboard size={22} strokeWidth={1.75} /><span className="rail-label">Клавиши<Kbd k="?" /></span></button>
-      <RailUser />
+    <nav className="sidebar">
+      <div className="sb-brand"><LogoMark size={26} />{!collapsed && <span className="sb-word">SPECTR</span>}</div>
+      <div className="sb-groups">
+        {GROUPS.map(g => (
+          <div key={g.title} className="sb-group">
+            {!collapsed && <div className="sb-group-h">{g.title}</div>}
+            {g.keys.map(k => { const s = SCREENS.find(x => x.key === k)!; const I = SCREEN_ICONS[k]; const active = tab?.kind === 'screen' && tab.screen === k
+              return <button key={k} className={`sb-item ${active ? 'active' : ''}`} onClick={() => openScreen(k)} title={collapsed ? s.label : undefined}><I /><span className="sb-label">{s.label}</span></button> })}
+          </div>
+        ))}
+      </div>
+      <div className="sb-foot">
+        <button className="sb-item" onClick={() => setHelp(true)} title="Клавиши"><Keyboard /><span className="sb-label">Клавиши <Kbd k="?" /></span></button>
+        <button className="sb-item" onClick={() => setSettings({ sidebar: collapsed ? 'expanded' : 'collapsed' })} title={collapsed ? 'Развернуть' : 'Свернуть'}>{collapsed ? <ChevronsRight /> : <ChevronsLeft />}<span className="sb-label">Свернуть</span></button>
+        <div className="sb-user"><span className="avatar">{session.name.split(' ').map(x => x[0]).join('').slice(0, 2)}</span>{!collapsed && <span className="sb-user-t"><b>{session.name}</b><span>{session.roleLabel}</span></span>}</div>
+      </div>
     </nav>
   )
-}
-
-function RailUser() {
-  const s = useStore(st => st.session)
-  const initials = (s?.name || '??').split(' ').map(x => x[0]).join('').slice(0, 2)
-  return <div className="rail-user" title={`${s?.name} · ${s?.roleLabel}`}><span>{initials}</span></div>
 }
 
 function TopBar() {
   const session = useStore(s => s.session)!; const setPalette = useStore(s => s.setPalette); const settings = useStore(s => s.settings); const setSettings = useStore(s => s.setSettings)
   const tabs = useStore(s => s.tabs); const activeTab = useStore(s => s.activeTab); const logout = useStore(s => s.logout); const setPurpose = useStore(s => s.setPurpose); const toast = useStore(s => s.toast)
-  const expires = useStore(s => s.sessionExpiresAt)
-  const [lag, setLag] = useState(0); const [pulse, setPulse] = useState(0)
   const [menu, setMenu] = useState(false)
-  useEffect(() => { const id = setInterval(() => { const f = typeFreshness().filter(x => x.sloSec <= 60); const l = f.length ? f.reduce((a, x) => a + x.lagSec, 0) / f.length : 0; setLag(l); setPulse(p => p + 1) }, 4000); return () => clearInterval(id) }, [])
   const tab = tabs.find(t => t.id === activeTab)
-  const w = world(); const obj = tab?.objectId ? getObject(tab.objectId) : undefined
-  const dzo = obj?.subsidiary ? getObject(obj.subsidiary)?.label : session.subsidiary ? getObject(w.named[session.subsidiary as 'dobycha' | 'transport' | 'pererabotka'])?.label : undefined
-  const cats = [...effectiveCategories(session)].filter(c => c !== 'SYNTHETIC')
-  const left = Math.max(0, expires - Date.now())
+  const obj = tab?.objectId ? getObject(tab.objectId) : undefined
+  const title = obj ? obj.label : tab?.title || ''
+  const sub = obj ? TYPES[obj.type].label : tab?.kind === 'screen' ? 'Северная нефть' : ''
   return (
     <header className="topbar">
-      <span className="brand"><LogoMark size={22} />SPECTR</span>
-      <span className="env-badge" title="Изолированный контур, российские ОС, без обращения к внешним сервисам"><i />ON-PREM · ИЗОЛИРОВАННЫЙ КОНТУР</span>
-      <span className="crumbs"><b>Северная нефть</b>{dzo && <><span className="sep">›</span><span>{dzo}</span></>}{obj && <><span className="sep">›</span><b>{obj.label}</b></>}{!obj && tab?.kind === 'screen' && <><span className="sep">›</span><span>{tab.title}</span></>}</span>
-      <button className="pill" onClick={() => setPalette(true)} title="Командная палитра"><Command size={11} />K</button>
-      <span className="pill" key={pulse} style={{ animation: 'sp-pulse 600ms var(--ease-inout) 1' }} title="Средний лаг живых типов (SLO ≤ 60 с)">⟳ {fmtAgo(lag)}</span>
+      <div className="tb-title"><span className="tb-h">{title}</span>{sub && <span className="tb-sub">{sub}</span>}</div>
       <span className="grow" />
-      <span className="mks"><span className="mk mk-level" style={{ ['--c' as string]: effectiveLevel(session) === 'CONFIDENTIAL' ? 'var(--mk-confidential)' : 'var(--mk-internal)' }}>{effectiveLevel(session)}</span>{cats.map(c => <span key={c} className="mk mk-cat">{c}</span>)}</span>
-      <button className="pill accent" onClick={() => setMenu(m => !m)} title="Текущая цель доступа (PBAC)">◎ {PURPOSE_LABELS[session.purpose || ''] || session.purpose}</button>
-      <button className="btn-icon" title={settings.presentation ? 'Выключить режим презентации' : 'Режим презентации: скрыть PII и FIN'} onClick={() => { setSettings({ presentation: !settings.presentation }); logRead(session, 'presentation.' + (settings.presentation ? 'off' : 'on'), []); toast({ text: settings.presentation ? 'Режим презентации выключен' : 'Режим презентации: PII и FIN скрыты. Зафиксировано в аудите', kind: 'info' }) }}>{settings.presentation ? <EyeOff size={15} /> : <Eye size={15} />}</button>
-      <button className="btn-icon" title="Тема" onClick={() => setSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}>{settings.theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</button>
+      <button className="tb-search" onClick={() => setPalette(true)}><Search /><span>Поиск объектов и команд</span><Kbd k="⌘K" /></button>
+      <Notifications />
       <div className="profile" style={{ position: 'relative' }}>
-        <button className="row" onClick={() => setMenu(m => !m)} style={{ gap: 8 }}><span className="avatar">{session.name.split(' ').map(x => x[0]).join('').slice(0, 2)}</span><span style={{ textAlign: 'left', lineHeight: 1.1 }}><div>{session.name}</div><div className="dim" style={{ fontSize: 10 }}>{session.roleLabel}</div></span></button>
+        <button className="tb-user" onClick={() => setMenu(m => !m)} title="Профиль и настройки"><span className="tb-clearance">{effectiveLevel(session)}</span><span className="tb-purpose">{PURPOSE_LABELS[session.purpose || ''] || session.purpose}</span><span className="avatar">{session.name.split(' ').map(x => x[0]).join('').slice(0, 2)}</span></button>
         {menu && (
           <div className="menu scale-in" onMouseLeave={() => setMenu(false)}>
+            <div className="menu-h">{session.name} · {session.roleLabel}</div>
             <div className="menu-h">Цель доступа</div>
-            {session.purposes.map(p => <button key={p} className={`menu-item ${p === session.purpose ? 'active' : ''}`} onClick={() => { setPurpose(p); setMenu(false); toast({ text: `Цель изменена: ${PURPOSE_LABELS[p]}. Штамп допуска обновлён`, kind: 'ok' }) }}>{PURPOSE_LABELS[p]} <span className="dim mono" style={{ fontSize: 10 }}>{p}</span></button>)}
+            {session.purposes.map(p => <button key={p} className={`menu-item ${p === session.purpose ? 'active' : ''}`} onClick={() => { setPurpose(p); setMenu(false); toast({ text: `Цель изменена: ${PURPOSE_LABELS[p]}`, kind: 'ok' }) }}>{PURPOSE_LABELS[p]}</button>)}
+            <div className="menu-h">Вид</div>
+            <button className="menu-item" onClick={() => setSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}>{settings.theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />} {settings.theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}</button>
+            <button className="menu-item" onClick={() => { setSettings({ presentation: !settings.presentation }); logRead(session, 'presentation.' + (settings.presentation ? 'off' : 'on'), []); toast({ text: settings.presentation ? 'Режим презентации выключен' : 'Режим презентации: PII и FIN скрыты, зафиксировано в аудите', kind: 'info' }) }}>{settings.presentation ? <EyeOff size={14} /> : <Eye size={14} />} {settings.presentation ? 'Выключить режим презентации' : 'Режим презентации (скрыть PII и FIN)'}</button>
+            <button className="menu-item" onClick={() => { location.hash = '#/wall' }}><Monitor size={14} /> Видеостена /wall</button>
             <div className="menu-h">Анимации</div>
-            <div className="seg" style={{ margin: '0 8px 6px' }}>{(['full', 'reduced', 'off'] as const).map(m => <button key={m} className={settings.motion === m ? 'active' : ''} onClick={() => setSettings({ motion: m })}>{m === 'full' ? 'полные' : m === 'reduced' ? 'умеренные' : 'выкл'}</button>)}</div>
+            <div className="seg" style={{ margin: '0 12px 8px' }}>{(['full', 'reduced', 'off'] as const).map(m => <button key={m} className={settings.motion === m ? 'active' : ''} onClick={() => setSettings({ motion: m })}>{m === 'full' ? 'полные' : m === 'reduced' ? 'умеренные' : 'выкл'}</button>)}</div>
             <div className="menu-h">Плотность</div>
-            <div className="seg" style={{ margin: '0 8px 6px' }}>{(['compact', 'normal', 'spacious'] as const).map(m => <button key={m} className={settings.density === m ? 'active' : ''} onClick={() => setSettings({ density: m })}>{m === 'compact' ? 'компактная' : m === 'normal' ? 'обычная' : 'просторная'}</button>)}</div>
-            <label className="check" style={{ margin: '4px 10px 8px' }}><input type="checkbox" checked={settings.ambient} onChange={e => setSettings({ ambient: e.target.checked })} /> Ambient-слой (потоки, пульс)</label>
-            <div className="menu-h">Сессия истекает через {Math.floor(left / 3600000)} ч {Math.floor((left % 3600000) / 60000)} мин</div>
-            <button className="menu-item" onClick={() => { location.hash = '#/wall' }}>Открыть видеостену /wall</button>
-            <button className="menu-item" onClick={() => { logout(); location.hash = '' }}><LogOut size={12} /> Выйти</button>
+            <div className="seg" style={{ margin: '0 12px 8px' }}>{(['compact', 'normal', 'spacious'] as const).map(m => <button key={m} className={settings.density === m ? 'active' : ''} onClick={() => setSettings({ density: m })}>{m === 'compact' ? 'компактная' : m === 'normal' ? 'обычная' : 'просторная'}</button>)}</div>
+            <button className="menu-item" onClick={() => { logout(); location.hash = '' }}><LogOut size={14} /> Выйти</button>
           </div>
         )}
       </div>
     </header>
+  )
+}
+
+function Notifications() {
+  const openObject = useStore(s => s.openObject)
+  const [open, setOpen] = useState(false)
+  const [, force] = useState(0)
+  useEffect(() => subscribeEvents(() => force(x => x + 1)), [])
+  const events = world().events
+  const important = events.filter(e => e.kind === 'anomaly' || e.kind === 'incident' || e.kind === 'action').slice(0, 40)
+  const fresh = important.filter(e => Date.now() - e.ts < 15 * 60_000).length
+  return (
+    <div style={{ position: 'relative' }}>
+      <button className={`btn-icon ${open ? 'active' : ''}`} onClick={() => setOpen(o => !o)} title="События"><Bell />{fresh > 0 && <span className="badge">{fresh}</span>}</button>
+      {open && (
+        <div className="menu notif scale-in" onMouseLeave={() => setOpen(false)}>
+          <div className="menu-h">События · аномалии, инциденты, действия</div>
+          {important.map(e => <button key={e.id} className="notif-item" onClick={() => { if (e.objectId) openObject(e.objectId); setOpen(false) }}><i className={`ev-dot ev-${e.kind}`} /><span className="grow">{e.text}</span><span className="mono dim">{fmtTime(e.ts)}</span></button>)}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -141,24 +170,8 @@ function TabsBar() {
   return (
     <div className="tabsbar">
       {tabs.map(t => { const o = t.objectId ? getObject(t.objectId) : undefined; const I = t.kind === 'screen' && t.screen ? SCREEN_ICONS[t.screen] : o ? TYPE_ICONS[o.type] : Search
-        return <button key={t.id} className={`tab ${t.id === activeTab ? 'active' : ''}`} onClick={() => activate(t.id)} onAuxClick={e => { if (e.button === 1) closeTab(t.id) }} title={t.title}><I size={12} style={{ color: o ? TYPES[o.type].color : undefined }} /><span className="truncate">{t.title}</span>{t.pinned && <Pin size={10} />}<span className="tab-close" onClick={e => { e.stopPropagation(); closeTab(t.id) }}><X size={12} /></span></button> })}
-      <button className="tab-add" onClick={() => setPalette(true)} title="Открыть (⌘K)"><Plus size={14} /></button>
-    </div>
-  )
-}
-
-function Ticker() {
-  const open = useStore(s => s.tickerOpen); const setTicker = useStore(s => s.setTicker); const openObject = useStore(s => s.openObject)
-  const [, force] = useState(0)
-  useEffect(() => subscribeEvents(() => force(x => x + 1)), [])
-  const events = world().events
-  return (
-    <div className="ticker">
-      <div className="ticker-line">
-        <button className="btn-icon" onClick={() => setTicker(!open)} title="Лента событий">{open ? <ChevronDown size={14} /> : <ChevronUp size={14} />}</button>
-        {events.slice(0, 6).map(e => <span key={e.id} className="ticker-item" onClick={() => e.objectId && openObject(e.objectId)}><i className={`ev-dot ev-${e.kind}`} /><span className="t">{fmtTime(e.ts)}</span><span className="truncate" style={{ maxWidth: 360 }}>{e.text}</span></span>)}
-      </div>
-      {open && <div className="ticker-list">{events.slice(0, 80).map(e => <span key={e.id} className="ticker-item" onClick={() => e.objectId && openObject(e.objectId)}><i className={`ev-dot ev-${e.kind}`} /><span className="t">{fmtTime(e.ts)}</span><span>{e.text}</span></span>)}</div>}
+        return <button key={t.id} className={`tab ${t.id === activeTab ? 'active' : ''}`} onClick={() => activate(t.id)} onAuxClick={e => { if (e.button === 1) closeTab(t.id) }} title={t.title}><I /><span className="truncate">{t.title}</span><span className="tab-close" onClick={e => { e.stopPropagation(); closeTab(t.id) }}><X size={13} /></span></button> })}
+      <button className="tab-add" onClick={() => setPalette(true)} title="Открыть (⌘K)"><Plus size={15} /></button>
     </div>
   )
 }
@@ -173,7 +186,7 @@ function CommandPalette() {
     const out: { group: string; label: string; hint?: string; icon?: ReactNode; run: () => void; sub?: string }[] = []
     const ql = q.toLowerCase()
     if (!ql.includes(':')) {
-      for (const s of SCREENS) if (!ql || s.label.toLowerCase().includes(ql)) { const I = SCREEN_ICONS[s.key]; out.push({ group: 'Экраны', label: s.label, hint: s.hint, icon: <I size={14} />, run: () => openScreen(s.key) }) }
+      for (const s of SCREENS) if (!ql || s.label.toLowerCase().includes(ql)) { const I = SCREEN_ICONS[s.key]; out.push({ group: 'Экраны', label: s.label, hint: s.hint, icon: <I size={16} />, run: () => openScreen(s.key) }) }
       const cmds = [
         { label: settings.theme === 'dark' ? 'Светлая тема' : 'Тёмная тема', run: () => setSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' }) },
         { label: settings.presentation ? 'Выключить режим презентации' : 'Режим презентации (скрыть PII/FIN)', run: () => setSettings({ presentation: !settings.presentation }) },
@@ -183,7 +196,7 @@ function CommandPalette() {
       ]
       for (const c of cmds) if (!ql || c.label.toLowerCase().includes(ql)) out.push({ group: 'Команды', label: c.label, run: c.run })
     }
-    if (ql.length >= 2) for (const o of quickSearch(session, q, 14)) { const I = TYPE_ICONS[o.type]; out.push({ group: TYPES[o.type].plural, label: o.label, sub: o.id, icon: <I size={14} style={{ color: TYPES[o.type].color }} />, run: () => openObject(o.id, { tab: true, inspector: true }) }) }
+    if (ql.length >= 2) for (const o of quickSearch(session, q, 14)) { const I = TYPE_ICONS[o.type]; out.push({ group: TYPES[o.type].plural, label: o.label, sub: o.id, icon: <I size={16} style={{ color: TYPES[o.type].color }} />, run: () => openObject(o.id, { tab: true, inspector: true }) }) }
     return out
   }, [q, settings])
   useEffect(() => setCur(0), [q])
@@ -191,12 +204,12 @@ function CommandPalette() {
   return (
     <div className="palette-back" onMouseDown={e => { if (e.target === e.currentTarget) setPalette(false) }}>
       <div className="palette">
-        <div className="palette-input"><Search size={16} className="dim" /><input ref={ref} value={q} onChange={e => setQ(e.target.value)} placeholder="Объект, команда или экран… (eq: org: inn: well: nps: doc:)" onKeyDown={e => { if (e.key === 'ArrowDown') { e.preventDefault(); setCur(c => Math.min(items.length - 1, c + 1)) } if (e.key === 'ArrowUp') { e.preventDefault(); setCur(c => Math.max(0, c - 1)) } if (e.key === 'Enter' && items[cur]) { items[cur].run(); setPalette(false) } if (e.key === 'Escape') setPalette(false) }} /><Kbd k="esc" /></div>
+        <div className="palette-input"><Search size={18} className="dim" /><input ref={ref} value={q} onChange={e => setQ(e.target.value)} placeholder="Объект, команда или экран…" onKeyDown={e => { if (e.key === 'ArrowDown') { e.preventDefault(); setCur(c => Math.min(items.length - 1, c + 1)) } if (e.key === 'ArrowUp') { e.preventDefault(); setCur(c => Math.max(0, c - 1)) } if (e.key === 'Enter' && items[cur]) { items[cur].run(); setPalette(false) } if (e.key === 'Escape') setPalette(false) }} /><Kbd k="esc" /></div>
         <div className="palette-list">
-          {groups.map(g => <div key={g}><div className="palette-group">{g}</div>{items.filter(i => i.group === g).map(i => { const idx = items.indexOf(i); return <div key={idx} className={`palette-item ${idx === cur ? 'active' : ''}`} style={{ animationDelay: `${Math.min(idx, 20) * 20}ms` }} onMouseEnter={() => setCur(idx)} onClick={() => { i.run(); setPalette(false) }}>{i.icon}<span>{i.label}</span>{i.sub && <span className="dim mono" style={{ fontSize: 10 }}>{i.sub}</span>}{i.hint && <span className="hint">{i.hint}</span>}</div> })}</div>)}
+          {groups.map(g => <div key={g}><div className="palette-group">{g}</div>{items.filter(i => i.group === g).map(i => { const idx = items.indexOf(i); return <div key={idx} className={`palette-item ${idx === cur ? 'active' : ''}`} onMouseEnter={() => setCur(idx)} onClick={() => { i.run(); setPalette(false) }}>{i.icon}<span>{i.label}</span>{i.sub && <span className="dim mono" style={{ fontSize: 11 }}>{i.sub}</span>}{i.hint && <span className="hint">{i.hint}</span>}</div> })}</div>)}
           {!items.length && <div className="dt-empty">Ничего не найдено</div>}
         </div>
-        <div className="palette-foot"><span>↑↓ выбор</span><span>⏎ открыть</span><span>префиксы: eq: org: inn: well: nps: mo: ctr: prc: doc:</span></div>
+        <div className="palette-foot"><span>↑↓ выбор</span><span>⏎ открыть</span><span>префиксы типов: eq: org: inn: well: nps: mo: ctr: prc: doc:</span></div>
       </div>
     </div>
   )
@@ -204,8 +217,8 @@ function CommandPalette() {
 
 function Help() {
   const setHelp = useStore(s => s.setHelp)
-  const rows: [string, string][] = [['⌘K / Ctrl+K', 'Командная палитра'], ['g s · g g · g m · g i', 'СЦ · Граф · Карта · Инспектор аудита'], ['g t · g p · g o · g b · g a', 'ТОиР · Закупки · Онтология · Ветки · Помощник'], ['/', 'Фокус в поиск'], ['e', 'Explain выделенного объекта'], ['a', 'Действия выделенного объекта'], ['[ ]', 'Переключение вкладок'], ['j / k · Enter · o', 'Навигация по таблице · открыть'], ['g / m / e (в таблице)', 'В граф · на карту · explain'], ['Esc', 'Закрыть панель / прервать анимацию'], ['?', 'Эта подсказка']]
-  return <div className="help-back" onMouseDown={e => { if (e.target === e.currentTarget) setHelp(false) }}><div className="help"><div className="row" style={{ marginBottom: 10 }}><b>Клавиатура · одна рука на клавиатуре (UX-05)</b><span className="grow" /><button className="btn-icon" onClick={() => setHelp(false)}><X size={14} /></button></div><table><tbody>{rows.map(r => <tr key={r[0]}><td><Kbd k={r[0]} /></td><td>{r[1]}</td></tr>)}</tbody></table></div></div>
+  const rows: [string, string][] = [['⌘K / Ctrl+K', 'Поиск и команды'], ['g s · g g · g m · g i', 'Ситуационный центр · Граф · Карта · Аудит'], ['g t · g p · g o · g b · g a', 'ТОиР · Закупки · Онтология · Ветки · Помощник'], ['/', 'Поиск объектов'], ['e', 'Explain выделенного объекта'], ['a', 'Действия выделенного объекта'], ['[ ]', 'Переключение вкладок'], ['j / k · Enter · o', 'Навигация по таблице · открыть'], ['g / m / e (в таблице)', 'В граф · на карту · explain'], ['Esc', 'Закрыть панель'], ['?', 'Эта подсказка']]
+  return <div className="help-back" onMouseDown={e => { if (e.target === e.currentTarget) setHelp(false) }}><div className="help"><div className="row" style={{ marginBottom: 10 }}><b>Клавиатура</b><span className="grow" /><button className="btn-icon" onClick={() => setHelp(false)}><X size={16} /></button></div><table><tbody>{rows.map(r => <tr key={r[0]}><td><Kbd k={r[0]} /></td><td>{r[1]}</td></tr>)}</tbody></table></div></div>
 }
 
 function useShortcuts() {
@@ -227,7 +240,7 @@ function useShortcuts() {
         if (map[e.key]) { s.openScreen(map[e.key]); pendingG = 0; return }
       }
       if (e.key === 'g') { pendingG = Date.now(); return }
-      if (e.key === 'e' && s.inspector.objectId) { const o = getObject(s.inspector.objectId); if (o) s.openExplain(o.id, TYPES[o.type].props.find(p => p.key)?.name || TYPES[o.type].props[0].name) ; return }
+      if (e.key === 'e' && s.inspector.objectId) { const o = getObject(s.inspector.objectId); if (o) s.openExplain(o.id, TYPES[o.type].props.find(p => p.key)?.name || TYPES[o.type].props[0].name); return }
       if (e.key === 'a' && s.inspector.objectId) { s.openObject(s.inspector.objectId, { tab: true }); return }
     }
     window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h)
@@ -252,4 +265,3 @@ function useHashSync() {
     apply(); window.addEventListener('hashchange', apply); return () => window.removeEventListener('hashchange', apply)
   }, [])
 }
-

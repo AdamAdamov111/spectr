@@ -55,7 +55,7 @@ export function ProcurementScreen() {
         {cmp.length === 2 && <button className="btn" onClick={() => setShowCmp(true)}><Columns3 size={13} /> Сравнить 2 закупки</button>}
       </div>
       <div className="screen-b">
-        <div className="proc-table"><DataTable rows={rows} columns={columns} selected={sel} onSelect={r => { setSel(r.id); setHl(null); openObject(r.id) }} onOpen={r => openObject(r.id, { tab: true })} onExplain={r => openExplain(r.id, 'cartel_pattern')} rowClass={r => (cmp.includes(r.id) ? 'in-compare' : '')} footer={<><span>Shift+клик по строке — в сравнение (2)</span><span className="grow" /><span>функция cartel_pattern@1.0.0 · участники, связи учредителей, паттерны цен</span></>} />
+        <div className="proc-table"><DataTable rows={rows} columns={columns} selected={sel} onSelect={r => { setSel(r.id); setHl(null); openObject(r.id) }} onOpen={r => openObject(r.id, { tab: true })} onExplain={r => openExplain(r.id, 'cartel_pattern')} rowClass={r => (cmp.includes(r.id) ? 'in-compare' : '')} footer={<><span>Shift+клик — в сравнение</span><span className="grow" /><span>cartel_pattern@1.0.0</span></>} />
           <div className="proc-cmp-catch" onClickCapture={e => { if (!(e as unknown as MouseEvent).shiftKey) return; const el = (e.target as HTMLElement).closest('.dt-row') as HTMLElement | null; if (!el) return; e.stopPropagation(); e.preventDefault(); const idx = Math.round(Number(el.style.top.replace('px', '')) / el.clientHeight); const r = rows[idx]; if (r) setCmp(c => (c.includes(r.id) ? c.filter(x => x !== r.id) : [...c, r.id].slice(-2))) }} /></div>
         <aside className="proc-side">
           {p && dec && !dec.allow && <PolicyDenied markings={p.markings} alternative={dec.alternativePurpose} />}

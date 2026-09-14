@@ -4,7 +4,7 @@ import { Search as SearchIcon, X, Columns3 } from 'lucide-react'
 import { search, type SearchFilters, world, get as getObject } from '../data/api'
 import { useStore, useSimulatedSession } from '../app/store'
 import { DataTable, type Column } from '../components/DataTable'
-import { ObjectChip, Markings, Freshness, Kbd, Modal, formatProp, Masked, TypeIcon } from '../components/ui'
+import { ObjectChip, Freshness, Kbd, Modal, formatProp, Masked, TypeIcon } from '../components/ui'
 import { TYPES, type ObjectType, type Marking, LEVELS, isLevel } from '../data/ontology'
 import { effectiveCategories, effectiveLevel, viewProps } from '../data/security'
 import type { SpObject } from '../data/types'
@@ -45,8 +45,7 @@ export function SearchScreen() {
       { key: 'dzo', label: 'ДЗО', width: 120, render: r => <span className="dim truncate">{r.subsidiary ? getObject(r.subsidiary)?.label : '—'}</span> },
     ]
     if (type) { const keys = TYPES[type].props.filter(p => p.key).slice(0, 5); for (const p of keys) cols.push({ key: p.name, label: p.label, width: p.type === 'money' || p.type === 'number' || p.type === 'decimal' ? 120 : 'minmax(100px, 1fr)', align: p.type === 'money' || p.type === 'number' || p.type === 'decimal' || p.type === 'percent' ? 'right' : 'left', render: r => { const vp = viewProps(session, r).find(x => x.name === p.name)!; return vp.masked && !vp.partial ? <Masked reason={vp.reason} markings={p.markings} inline /> : <span className="mono truncate">{formatProp(vp.value, p.type, p.unit)}</span> }, sort: (a, b) => { const x = a.props[p.name], y = b.props[p.name]; return typeof x === 'number' && typeof y === 'number' ? x - y : String(x ?? '').localeCompare(String(y ?? '')) } }) }
-    cols.push({ key: 'mk', label: 'Маркировки', width: 170, render: r => <Markings list={r.markings} small /> })
-    cols.push({ key: 'fresh', label: 'Свежесть', width: 80, render: r => <Freshness o={r} /> })
+    cols.push({ key: 'fresh', label: 'Свежесть', width: 90, render: r => <Freshness o={r} /> })
     return cols
   }, [type, session.login, session.purpose])
   const facet = (k: keyof SearchFilters, v: unknown) => setF(x => ({ ...x, [k]: x[k] === v ? undefined : v }))
@@ -54,7 +53,7 @@ export function SearchScreen() {
     <div className="screen search">
       <div className="screen-h">
         <div className="search-input"><SearchIcon size={15} className="dim" /><input ref={ref} value={q} onChange={e => { setQ(e.target.value); setPred(null) }} placeholder="Поиск объектов… префиксы eq: org: inn: well: nps: mo: ctr: prc: doc:" />{q && <button className="btn-icon" onClick={() => setQ('')}><X size={13} /></button>}<Kbd k="/" /></div>
-        <span className="dim mono" style={{ fontSize: 11 }}>{rows.length.toLocaleString('ru-RU')} объектов · {res.tookMs} мс · PEP: фильтр _mk до подсчёта</span>
+        <span className="dim" style={{ fontSize: 13 }}>{rows.length.toLocaleString('ru-RU')} объектов · {res.tookMs} мс</span>
         <span className="grow" />
         {compare.length > 0 && <button className="btn" onClick={() => setShowCompare(true)}><Columns3 size={13} /> Сравнить ({compare.length})</button>}
       </div>
@@ -70,7 +69,7 @@ export function SearchScreen() {
         <div className="search-results">
           <DataTable rows={rows} columns={columns} selected={selected} staggerKey={`${debounced}|${JSON.stringify(f)}`} onSelect={r => openObject(r.id)} onOpen={r => openObject(r.id, { tab: true })} onGraph={() => openScreen('graph')} onMap={r => r.geo && focusMap(r.id)} onExplain={r => openExplain(r.id, TYPES[r.type].props.find(p => p.derived_by)?.name || TYPES[r.type].props[0].name)}
             empty={<span>Объектов не найдено. Подключите источник или проверьте фильтры</span>}
-            footer={<><span>{rows.length >= 10000 ? 'показаны первые 10 000, уточните запрос' : `${rows.length.toLocaleString('ru-RU')} строк`}</span><span>j/k — навигация · o — открыть · g — граф · m — карта · e — explain · Shift+клик — в сравнение</span><span className="grow" /><span>всего объектов на стенде: {w.objects.size.toLocaleString('ru-RU')}</span></>}
+            footer={<><span>{rows.length >= 10000 ? 'Показаны первые 10 000 — уточните запрос' : `${rows.length.toLocaleString('ru-RU')} строк`}</span><span className="grow" /><span>Всего объектов: {w.objects.size.toLocaleString('ru-RU')}</span></>}
             rowClass={r => (compare.includes(r.id) ? 'in-compare' : '')} />
           <div className="compare-hint" onClickCapture={e => { const el = (e.target as HTMLElement).closest('.dt-row'); if (el && (e as unknown as MouseEvent).shiftKey) { e.stopPropagation(); e.preventDefault(); const idx = Number((el as HTMLElement).style.top.replace('px', '')) / (el as HTMLElement).clientHeight; const r = rows[Math.round(idx)]; if (r) toggleCompare(r.id) } }} />
         </div>

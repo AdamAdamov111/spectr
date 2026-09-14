@@ -36,7 +36,7 @@ export function Freshness({ o, text = true, pulseKey }: { o: SpObject; text?: bo
 }
 
 // ---------- Object chip with hover card ----------
-export function ObjectChip({ id, o: given, compact, onOpen, noHover, style }: { id?: string; o?: SpObject; compact?: boolean; onOpen?: (o: SpObject) => void; noHover?: boolean; style?: CSSProperties }) {
+export function ObjectChip({ id, o: given, compact, onOpen, noHover, style, meta }: { id?: string; o?: SpObject; compact?: boolean; onOpen?: (o: SpObject) => void; noHover?: boolean; style?: CSSProperties; meta?: boolean }) {
   const o = given ?? (id ? getObject(id) : undefined)
   const session = useStore(s => s.session)
   const openObject = useStore(s => s.openObject)
@@ -50,10 +50,10 @@ export function ObjectChip({ id, o: given, compact, onOpen, noHover, style }: { 
     <span className={`chip-wrap`} onMouseEnter={() => { if (noHover) return; timer.current = window.setTimeout(() => setHover(true), 350) }} onMouseLeave={() => { clearTimeout(timer.current); setHover(false) }}>
       <button className={`chip ${compact ? 'chip-compact' : ''}`} style={{ ['--tc' as string]: TYPES[o.type].color, ...style }} draggable onDragStart={e => { e.dataTransfer.setData('text/spectr-object', o.id); e.dataTransfer.setData('text/plain', o.id) }}
         onClick={e => { e.stopPropagation(); onOpen ? onOpen(o) : openObject(o.id, { inspector: true, tab: e.metaKey || e.ctrlKey }) }} onDoubleClick={e => { e.stopPropagation(); openObject(o.id, { tab: true }) }} title={`${TYPES[o.type].label} · ${o.label}`}>
-        <Icon size={13} className="chip-icon" />
+        <Icon className="chip-icon" />
         <span className="chip-label truncate">{o.label}</span>
-        {!compact && <span className="chip-mk" style={{ background: markingColor(lvl) }} />}
-        {!compact && <Freshness o={o} text={false} />}
+        {meta && <span className="chip-mk" style={{ background: markingColor(lvl) }} />}
+        {meta && <Freshness o={o} text={false} />}
       </button>
       {hover && <HoverCard o={o} />}
     </span>

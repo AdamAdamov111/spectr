@@ -47,16 +47,16 @@
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* radii: Blueprint uses 2–3 px */
-  --radius-el: 3px; --radius-card: 4px; --radius-stamp: 0px; --radius-pill: 3px;
+  --radius-el: 4px; --radius-card: 4px; --radius-stamp: 0px; --radius-pill: 4px;
 
   /* motion */
-  --mo-instant: 0ms; --mo-fast: 120ms; --mo-base: 200ms; --mo-slow: 320ms; --mo-cinematic: 900ms;
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --mo-instant: 0ms; --mo-fast: 100ms; --mo-base: 200ms; --mo-slow: 300ms; --mo-cinematic: 900ms;
+  --ease-out: cubic-bezier(0.4, 1, 0.75, 0.9);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
   --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
 
   /* layout: roomier, larger glyphs */
-  --row-h: 40px; --rail-w: 68px; --inspector-w: clamp(340px, 30vw, 480px); --ticker-h: 32px; --topbar-h: 52px; --tabsbar-h: 40px;
+  --row-h: 40px; --sidebar-w: 232px; --sidebar-w-collapsed: 60px; --inspector-w: clamp(340px, 30vw, 480px); --topbar-h: 50px; --tabsbar-h: 36px;
   --icon: 20px;
   color-scheme: dark;
 }
@@ -83,7 +83,7 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body {
-  background: var(--sp-bg); color: var(--sp-text); font-family: var(--font-text); font-size: 14px; line-height: 1.45;
+  background: var(--sp-bg); color: var(--sp-text); font-family: var(--font-text); font-size: 14px; line-height: 1.3;
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; overflow: hidden; letter-spacing: 0;
   transition: background-color var(--mo-base) var(--ease-inout), color var(--mo-base) var(--ease-inout);
 }

@@ -5,8 +5,6 @@ import { MapCanvas, DEFAULT_LAYERS, type MapMarker } from '../map/MapCanvas'
 import { world, kpis, get as getObject, neighbors, subscribeEvents, typeFreshness } from '../data/api'
 import { useStore, useSimulatedSession } from '../app/store'
 import { CountUp, Panel, ObjectChip } from '../components/ui'
-import { Sparkline } from '../components/Sparkline'
-import { Rng, hash32 } from '../data/rng'
 import { canSee } from '../data/security'
 import { fmtAgo, fmtTime } from '../data/rng'
 import { TYPES } from '../data/ontology'
@@ -50,7 +48,7 @@ export function Situation() {
     <div className="screen situation">
       <div className="situ-map">
         <MapCanvas markers={markers} pipelines={w.pipelines} layers={DEFAULT_LAYERS} selected={selected} hover={hover} onHover={setHover} onSelect={id => id && openObject(id)} onLasso={ids => inspect({ open: true, mode: 'summary', summaryIds: ids })} ambient={ambient} intro={!flyDone} theme={theme} timeOffsetH={offset} staleLayer={chaos.sapStale ? { kind: 'well', text: 'Источник SAP-реплика молчит 14 мин (SLO 15 мин) — слой скважин устарел' } : null} />
-        <div className="map-legend legend"><span><i style={{ background: '#9d8be8' }} />скважины</span><span><i style={{ background: '#4c90f0' }} />НПС / резервуары</span><span><i style={{ background: '#e76a6e' }} />аномалии / инциденты</span><span><i style={{ background: '#abb3bf' }} />техника</span><span className="dim">Shift+drag — лассо · колесо — масштаб</span></div>
+        <div className="map-legend legend"><span><i style={{ background: '#9d8be8' }} />скважины</span><span><i style={{ background: '#4c90f0' }} />НПС и резервуары</span><span><i style={{ background: '#e76a6e' }} />аномалии и инциденты</span><span><i style={{ background: '#abb3bf' }} />техника</span></div>
         <div className="timeline">
           <span className="mono dim" style={{ fontSize: 10 }}>−24 ч</span>
           <input type="range" min={0} max={24} value={24 - offset} onChange={e => setOffset(24 - Number(e.target.value))} aria-label="Таймлайн 24 часа" />
@@ -66,7 +64,7 @@ export function Situation() {
           <Kpi label="ТОиР: открыто" v={k.openOrders} sub={`${k.critical} ед. с индексом < 0.4`} delta={-2.4} spark="toir" onClick={() => openScreen('toir')} />
           <Kpi label="Закупки: риск" v={k.cartel} sub="cartel_pattern > 0.5" tone="warn" delta={2} deltaAbs spark="cartel" onClick={() => openScreen('procurement')} />
         </div>
-        <Panel title="Свежесть источников" dense className="situ-fresh">
+        <Panel title="Свежесть данных" dense className="situ-fresh">
           <div className="fresh-list">{fresh.map(f => <div key={f.type} className="fresh-row"><span className={`fresh fresh-${f.status}`}><span className="fresh-dot" /></span><span className="grow">{f.label}</span><span className="mono dim" style={{ fontSize: 11 }}>{fmtAgo(f.lagSec)} / {fmtAgo(f.sloSec)}</span></div>)}{chaos.sapStale && <div className="fresh-row" style={{ color: 'var(--sp-danger)' }}><span className="fresh fresh-stale"><span className="fresh-dot" /></span><span className="grow">SAP-реплика (скважины)</span><span className="mono" style={{ fontSize: 11 }}>14 мин / 15 мин</span></div>}</div>
         </Panel>
         <Panel title="Действия" dense>
@@ -74,7 +72,6 @@ export function Situation() {
             <button className="btn" onClick={() => openAction('open_incident', n.nps2)}><Siren size={13} /> Открыть инцидент · НПС-2</button>
             <button className="btn" onClick={() => openAction('create_maintenance_order', n.pump104)}><Wrench size={13} /> Создать заявку ТОиР · Насос-104</button>
             <button className="btn" onClick={() => openAction('flag_counterparty', n.vektor)}><Gavel size={13} /> Поставить на контроль · ООО «Вектор»</button>
-            <div className="row" style={{ marginTop: 4, gap: 6 }}><span className="dim" style={{ fontSize: 11 }}>сценарий:</span><ObjectChip id={n.nps2} compact /><span className="dim">→</span><ObjectChip id={n.pump104} compact /><span className="dim">→</span><ObjectChip id={n.vektor} compact /></div>
           </div>
         </Panel>
         <Panel title="Лента событий" dense className="situ-events">
@@ -87,13 +84,11 @@ export function Situation() {
 }
 
 const TONE_COLOR = { danger: '#e76a6e', warn: '#ec9a3c', ok: '#32a467', accent: '#4c90f0', default: '#abb3bf' }
-function sparkData(key: string, v: number, trend: number): number[] { const r = new Rng(hash32(key)); const out: number[] = []; let x = v * (1 - trend / 100 * 1.2); for (let i = 0; i < 16; i++) { x = x * (1 + r.gauss(0, 0.02)) + (v - x) * 0.12; out.push(x) } out.push(v); return out }
 function Kpi({ label, v, d = 0, unit, sub, tone, onClick, delta, deltaAbs, spark }: { label: string; v: number; d?: number; unit?: string; sub?: string; tone?: 'danger' | 'warn' | 'ok' | 'accent'; onClick?: () => void; delta?: number; deltaAbs?: boolean; spark?: string }) {
-  const color = TONE_COLOR[tone || 'default']
+  void TONE_COLOR; void spark
   return <button className={`kpi shine ${tone || ''}`} onClick={onClick} style={{ textAlign: 'left' }}>
     <span className="kpi-l">{label}{delta != null && <span className={`delta ${delta > 0 ? (tone === 'danger' || tone === 'warn' ? 'down' : 'up') : delta < 0 ? (tone === 'danger' || tone === 'warn' ? 'up' : 'down') : 'flat'}`}>{delta > 0 ? '▲' : delta < 0 ? '▼' : '•'} {deltaAbs ? Math.abs(delta) : `${Math.abs(delta).toFixed(1)}%`}</span>}</span>
     <span className="kpi-v"><CountUp value={v} decimals={d} />{unit && <small>{unit}</small>}</span>
     {sub && <span className="kpi-s">{sub}</span>}
-    {spark && <span className="kpi-spark"><Sparkline data={sparkData(spark, v, delta || 0)} color={color} /></span>}
   </button>
 }

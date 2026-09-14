@@ -206,3 +206,8 @@
   .action-grid { grid-template-columns: 1fr; }
   .toasts { right: 12px; width: calc(100vw - 24px); }
 }
+
+/* clean: provenance hints appear on hover only */
+.prop-row .prop-src { opacity: 0; transition: opacity var(--mo-fast); }
+.prop-row:hover .prop-src { opacity: 1; }
+.situ-map { border-right: 1px solid var(--sp-border); }

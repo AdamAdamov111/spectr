@@ -23,7 +23,7 @@ export const SCREENS: { key: ScreenKey; label: string; hint: string }[] = [
 export interface Tab { id: string; kind: 'screen' | 'object' | 'explain' | 'action' | 'investigation'; screen?: ScreenKey; objectId?: string; prop?: string; action?: string; title: string; pinned?: boolean; params?: Record<string, unknown> }
 export interface Toast { id: number; text: string; kind: 'info' | 'ok' | 'warn' | 'danger'; undo?: () => void; ttl?: number }
 export interface InspectorState { open: boolean; objectId?: string; mode: 'object' | 'explain' | 'summary' | 'freshness'; prop?: string; summaryIds?: string[] }
-export interface Settings { theme: 'dark' | 'light'; density: 'compact' | 'normal' | 'spacious'; motion: 'full' | 'reduced' | 'off'; presentation: boolean; ambient: boolean }
+export interface Settings { theme: 'dark' | 'light'; density: 'compact' | 'normal' | 'spacious'; motion: 'full' | 'reduced' | 'off'; presentation: boolean; ambient: boolean; sidebar: 'expanded' | 'collapsed' }
 
 interface State {
   session: Session | null
@@ -152,9 +152,10 @@ export function useSimulatedSession(): Session {
 }
 
 function loadSettings(): Settings {
-  const d: Settings = { theme: 'dark', density: 'normal', motion: 'full', presentation: false, ambient: true }
+  const d: Settings = { theme: 'dark', density: 'normal', motion: 'full', presentation: false, ambient: true, sidebar: typeof window !== 'undefined' && window.innerWidth < 1200 ? 'collapsed' : 'expanded' }
   try { const raw = localStorage.getItem('spectr.settings'); if (raw) Object.assign(d, JSON.parse(raw)) } catch { /* ignore */ }
   d.presentation = false
+  if (!d.sidebar) d.sidebar = 'expanded'
   applySettings(d)
   return d
 }

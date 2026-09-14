@@ -14,13 +14,13 @@ export function Inspector() {
     <aside className="inspector">
       <div className="inspector-h">
         {ins.mode !== 'object' && <button className="btn-icon" onClick={() => inspect({ mode: 'object' })} title="Назад к объекту"><ArrowLeft size={14} /></button>}
-        <span>ИНСПЕКТОР{ins.mode === 'explain' ? ' · EXPLAIN' : ins.mode === 'freshness' ? ' · СВЕЖЕСТЬ' : ins.mode === 'summary' ? ' · СВОДКА' : ''}</span>
+        <span>{ins.mode === 'explain' ? 'Происхождение' : ins.mode === 'freshness' ? 'Свежесть' : ins.mode === 'summary' ? 'Сводка по выделению' : 'Объект'}</span>
         <span className="grow" />
         <button className="btn-icon" onClick={() => inspect({ open: false })} title="Свернуть инспектор"><PanelRightClose size={14} /></button>
       </div>
       {pinned.length > 0 && <div className="pinned-strip">{pinned.map(id => <ObjectChip key={id} id={id} compact onOpen={x => inspect({ objectId: x.id, mode: 'object' })} />)}</div>}
       <div className="inspector-b" key={`${ins.mode}:${ins.objectId}:${ins.prop}`}>
-        {ins.mode === 'object' && (o ? <ObjectCard id={o.id} compact /> : <Empty text="Выберите объект на любом экране — его контекст, explain, действия и аудит появятся здесь" />)}
+        {ins.mode === 'object' && (o ? <ObjectCard id={o.id} compact /> : <Empty text="Выберите объект" />)}
         {ins.mode === 'explain' && o && ins.prop && <ExplainView id={o.id} prop={ins.prop} />}
         {ins.mode === 'freshness' && o && <FreshnessPanel id={o.id} />}
         {ins.mode === 'summary' && <Summary ids={ins.summaryIds || []} />}
