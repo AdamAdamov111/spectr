@@ -1,0 +1,50 @@
+# ontology/objects/document.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Document
+version: 1.1.0
+owner: team-nlp
+description: "Документ из СЭД, почты или файлового хранилища"
+primary_key: doc_id
+backing_dataset: gold.document
+provenance: row
+freshness_slo: 5m
+markings: [INTERNAL]
+sources: [sed, mail, files]
+properties: 
+  - name: kind
+    label: Тип
+    type: enum
+    key: true
+  - name: title
+    label: Заголовок
+    type: string
+    key: true
+  - name: date
+    label: Дата
+    type: date
+    key: true
+  - name: source
+    label: Источник
+    type: string
+    key: true
+  - name: pages
+    label: Страниц
+    type: number
+  - name: ocr
+    label: OCR
+    type: bool
+  - name: mentions_count
+    label: Упоминаний
+    type: number
+    key: true
+links: 
+  - name: mentions
+    direction: out
+    to: [Organization, Person, Contract, Equipment]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+  - name: attached_to
+    direction: out
+    to: [Contract, Incident, MaintenanceOrder]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+actions: []

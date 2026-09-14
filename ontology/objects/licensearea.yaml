@@ -1,0 +1,22 @@
+# ontology/objects/licensearea.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: LicenseArea
+version: 1.0.0
+owner: team-geo
+description: Лицензия на недропользование
+primary_key: lic_id
+backing_dataset: gold.license_area
+provenance: dataset
+freshness_slo: 30d
+markings: [CONFIDENTIAL]
+sources: [rosnedra]
+properties: 
+  - name: number
+    label: Номер лицензии
+    type: string
+    key: true
+  - name: valid_to
+    label: Срок
+    type: date
+    key: true
+links: []
+actions: []

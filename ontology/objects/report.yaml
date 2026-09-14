@@ -1,0 +1,26 @@
+# ontology/objects/report.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Report
+version: 1.0.0
+owner: team-fin
+description: Форма отчётности
+primary_key: rep_id
+backing_dataset: gold.report
+provenance: row
+freshness_slo: 1d
+markings: [INTERNAL]
+sources: [sed, gas_upravlenie]
+properties: 
+  - name: form
+    label: Форма
+    type: string
+    key: true
+  - name: period
+    label: Период
+    type: string
+    key: true
+  - name: status
+    label: Статус
+    type: enum
+    key: true
+links: []
+actions: []

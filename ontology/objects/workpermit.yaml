@@ -1,0 +1,26 @@
+# ontology/objects/workpermit.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: WorkPermit
+version: 1.0.0
+owner: team-toir
+description: Наряд-допуск на работы
+primary_key: wp_id
+backing_dataset: gold.work_permit
+provenance: row
+freshness_slo: 15m
+markings: [INTERNAL]
+sources: [sed]
+properties: 
+  - name: number
+    label: Номер
+    type: string
+    key: true
+  - name: work
+    label: Вид работ
+    type: string
+    key: true
+  - name: valid_to
+    label: Срок
+    type: date
+    key: true
+links: []
+actions: []

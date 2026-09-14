@@ -1,0 +1,57 @@
+# ontology/objects/pipeline.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Pipeline
+version: 1.0.0
+owner: team-transport
+description: Магистральный или промысловый трубопровод
+primary_key: pipe_id
+backing_dataset: gold.pipeline
+provenance: row
+freshness_slo: 1d
+markings: [CONFIDENTIAL]
+sources: [opo_registry, sap_pm]
+properties: 
+  - name: code
+    label: Код
+    type: string
+    key: true
+  - name: diameter
+    label: Диаметр
+    type: number
+    unit: мм
+    key: true
+  - name: length
+    label: Протяжённость
+    type: number
+    unit: км
+    markings: [GEO]
+    key: true
+  - name: design_pressure
+    label: Давление проектное
+    type: number
+    unit: МПа
+  - name: flow
+    label: Расход
+    type: number
+    unit: м³/ч
+    markings: [PROD]
+    live: true
+  - name: commissioned
+    label: Год ввода
+    type: number
+links: 
+  - name: operates
+    direction: in
+    to: [Subsidiary]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: transports
+    direction: in
+    to: [Shipment]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+  - name: connects
+    direction: out
+    to: [PumpStation, Field, Tank]
+    cardinality: "N:M"
+    markings: [GEO]
+actions: []

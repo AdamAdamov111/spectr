@@ -1,0 +1,40 @@
+# ontology/objects/pipelinesegment.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: PipelineSegment
+version: 1.0.0
+owner: team-transport
+description: Участок трубопровода между километрами
+primary_key: seg_id
+backing_dataset: gold.pipeline_segment
+provenance: row
+freshness_slo: 1d
+markings: [CONFIDENTIAL]
+sources: [vtd, sap_pm]
+properties: 
+  - name: km_from
+    label: Км начала
+    type: number
+    key: true
+  - name: km_to
+    label: Км конца
+    type: number
+    key: true
+  - name: category
+    label: Категория
+    type: enum
+    key: true
+  - name: defects
+    label: Дефекты ВТД
+    type: number
+    key: true
+links: 
+  - name: has_equipment
+    direction: out
+    to: [Equipment]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: occurred_at
+    direction: in
+    to: [Incident]
+    cardinality: "N:1"
+    markings: [CONFIDENTIAL]
+actions: []

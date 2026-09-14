@@ -1,0 +1,40 @@
+# ontology/objects/anomaly.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Anomaly
+version: 1.0.0
+owner: team-ml
+description: Наблюдение ML-пайплайна
+primary_key: an_id
+backing_dataset: enrich.anomaly
+provenance: full
+freshness_slo: 1m
+markings: [INTERNAL]
+sources: [pipelines.anomaly_v3]
+properties: 
+  - name: kind
+    label: Тип
+    type: enum
+    key: true
+  - name: score
+    label: Score
+    type: decimal
+    derived_by: pipelines.anomaly_v3
+    key: true
+  - name: window_from
+    label: Окно с
+    type: datetime
+    key: true
+  - name: window_to
+    label: Окно по
+    type: datetime
+    key: true
+  - name: model
+    label: Модель
+    type: string
+    key: true
+links: 
+  - name: detected_on
+    direction: out
+    to: [Sensor, Equipment, PumpStation]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+actions: []

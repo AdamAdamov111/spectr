@@ -1,0 +1,118 @@
+# Action types (spec 3.3) — write-back via Temporal workflows
+actions: 
+  - name: flag_counterparty
+    label: Поставить контрагента на контроль
+    object: [Organization]
+    preconditions: [Нет активного legal hold, Роль СЭБ у инициатора, Контрагент ещё не на контроле]
+    writeback: "CRM / SAP: статус блокировки"
+    risk: Средний
+    confirmation: 1 человек
+    role: seb
+    params: 
+      - name: reason
+        label: Основание
+        type: enum
+        options: [Аффилированность с участниками закупок, Признаки картельного сговора, Срыв сроков по договорам, Недостоверные сведения в ЕГРЮЛ]
+        required: true
+      - name: until
+        label: Срок контроля
+        type: date
+        required: true
+        default: 2026-12-31
+      - name: comment
+        label: Комментарий
+        type: text
+  - name: create_maintenance_order
+    label: Создать заявку ТОиР
+    object: [Equipment]
+    preconditions: [Индекс состояния < 0.5 или есть Anomaly, Нет открытой заявки того же типа, Оборудование не выведено из эксплуатации]
+    writeback: "SAP PM / 1С ТОиР: новая заявка"
+    risk: Средний
+    confirmation: 1 человек
+    role: toir
+    params: 
+      - name: kind
+        label: Тип работ
+        type: enum
+        options: [Внеплановый ремонт, Диагностика, ТО-2, Замена узла]
+        required: true
+        default: Диагностика
+      - name: priority
+        label: Приоритет
+        type: enum
+        options: [Низкий, Средний, Высокий, Критический]
+        required: true
+        default: Высокий
+      - name: planned
+        label: Плановая дата
+        type: date
+        required: true
+        default: 2026-09-18
+      - name: description
+        label: Описание
+        type: text
+  - name: change_order_priority
+    label: Изменить приоритет заявки
+    object: [MaintenanceOrder]
+    preconditions: [Статус не «закрыта»]
+    writeback: SAP PM / 1С
+    risk: Низкий
+    confirmation: Автоматически по политике до порога стоимости
+    params: 
+      - name: priority
+        label: Новый приоритет
+        type: enum
+        options: [Низкий, Средний, Высокий, Критический]
+        required: true
+  - name: open_incident
+    label: Открыть инцидент
+    object: [PumpStation, Equipment]
+    preconditions: [Anomaly score > 0.8 или ручной триггер, Нет открытого инцидента по объекту]
+    writeback: "Журнал инцидентов, СЭД"
+    risk: Высокий
+    confirmation: 2 человека
+    params: 
+      - name: class
+        label: Класс
+        type: enum
+        options: [Отклонение параметров, Отказ оборудования, Утечка, Нарушение режима]
+        required: true
+        default: Отклонение параметров
+      - name: description
+        label: Описание
+        type: text
+        required: true
+  - name: request_documents
+    label: Запросить документы
+    object: [Organization, Contract]
+    preconditions: [Открытая закупка или проверка]
+    writeback: "Почта / СЭД: исходящее письмо"
+    risk: Низкий
+    confirmation: 1 человек
+    params: 
+      - name: docs
+        label: Документы
+        type: enum
+        options: [Учредительные документы, Справка об отсутствии задолженности, Подтверждение опыта]
+        required: true
+      - name: deadline
+        label: Срок ответа
+        type: date
+        required: true
+        default: 2026-09-28
+  - name: assign_purpose
+    label: Назначить цель доступа
+    object: [Purpose]
+    preconditions: [Правовое основание указано, Срок задан]
+    writeback: Реестр PBAC
+    risk: Высокий
+    confirmation: Владелец цели + офицер ИБ
+    params: 
+      - name: employee
+        label: Сотрудник
+        type: string
+        required: true
+      - name: until
+        label: Срок
+        type: date
+        required: true

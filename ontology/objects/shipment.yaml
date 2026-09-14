@@ -1,0 +1,37 @@
+# ontology/objects/shipment.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Shipment
+version: 1.0.0
+owner: team-logistics
+description: Партия продукта
+primary_key: shp_id
+backing_dataset: gold.shipment
+provenance: row
+freshness_slo: 15m
+markings: [CONFIDENTIAL]
+sources: [sap_sd, onec]
+properties: 
+  - name: product
+    label: Продукт
+    type: enum
+    key: true
+  - name: volume
+    label: Объём
+    type: number
+    unit: т
+    key: true
+  - name: status
+    label: Статус
+    type: enum
+    key: true
+links: 
+  - name: under_contract
+    direction: out
+    to: [Contract]
+    cardinality: "N:1"
+    markings: [CONFIDENTIAL]
+  - name: transports
+    direction: out
+    to: [Pipeline, Vehicle]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+actions: []

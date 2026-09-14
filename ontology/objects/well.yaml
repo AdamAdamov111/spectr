@@ -1,0 +1,60 @@
+# ontology/objects/well.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Well
+version: 1.2.0
+owner: team-prod
+description: Добывающая или нагнетательная скважина
+primary_key: well_id
+backing_dataset: gold.well
+provenance: row
+freshness_slo: 15m
+markings: [CONFIDENTIAL, PROD]
+sources: [prod_registry, measurements, sap_pm]
+properties: 
+  - name: number
+    label: Номер
+    type: string
+    sources: [prod_registry.wells.no]
+    key: true
+  - name: kind
+    label: Тип
+    type: enum
+    key: true
+  - name: status
+    label: Статус
+    type: enum
+    sources: [prod_registry.wells.status]
+    key: true
+  - name: debit
+    label: Дебит
+    type: number
+    unit: т/сут
+    markings: [PROD]
+    sources: [measurements.daily.debit]
+    key: true
+    live: true
+  - name: water_cut
+    label: Обводнённость
+    type: percent
+    unit: %
+    markings: [PROD]
+    live: true
+  - name: commissioned
+    label: Дата ввода
+    type: date
+  - name: trend_30d
+    label: Тренд 30 дн
+    type: percent
+    unit: %
+    derived_by: functions.well_trend
+links: 
+  - name: located_on
+    direction: out
+    to: [WellPad, Field]
+    cardinality: "N:1"
+    markings: [GEO]
+  - name: has_equipment
+    direction: out
+    to: [Equipment]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+actions: []

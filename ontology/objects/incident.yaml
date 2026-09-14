@@ -1,0 +1,45 @@
+# ontology/objects/incident.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Incident
+version: 1.1.0
+owner: team-hse
+description: Инцидент на активе
+primary_key: inc_id
+backing_dataset: gold.incident
+provenance: full
+freshness_slo: 1m
+markings: [CONFIDENTIAL]
+sources: [incident_log, sed]
+properties: 
+  - name: class
+    label: Класс
+    type: enum
+    key: true
+  - name: date
+    label: Дата
+    type: datetime
+    key: true
+  - name: status
+    label: Статус расследования
+    type: enum
+    key: true
+  - name: consequences
+    label: Последствия
+    type: text
+    markings: [LEGAL]
+  - name: damage
+    label: Ущерб
+    type: money
+    markings: [FIN, LEGAL]
+    masking: null_for_unauthorized
+links: 
+  - name: attached_to
+    direction: in
+    to: [Document]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+  - name: occurred_at
+    direction: out
+    to: [Equipment, PipelineSegment, PumpStation]
+    cardinality: "N:1"
+    markings: [CONFIDENTIAL]
+actions: []

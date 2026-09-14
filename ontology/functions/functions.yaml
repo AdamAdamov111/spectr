@@ -1,0 +1,32 @@
+# Functions (spec 3.4)
+functions: 
+  - name: equipment_health_index
+    label: Индекс состояния оборудования
+    input: "наработка, аномалии за 30 дней, открытые заявки, возраст"
+    output: 0..1
+    explain: true
+  - name: counterparty_risk_score
+    label: Риск-скор контрагента
+    input: "связи учредителей, совпадения адресов/телефонов, история торгов, срывы сроков"
+    output: 0..1 + факторы
+    explain: true
+  - name: cartel_pattern
+    label: Картельный паттерн
+    input: "участники, их связи, паттерны цен"
+    output: score + подграф
+    explain: true
+  - name: contract_execution_status
+    label: Статус исполнения договора
+    input: "заявки, отгрузки, акты"
+    output: % и просрочка
+    explain: true
+  - name: subsidiary_pl
+    label: P&L ДЗО
+    input: "проводки SAP/1С, курсы"
+    output: P&L по статьям
+    explain: true
+  - name: freshness
+    label: Свежесть
+    input: метаданные материализации
+    output: секунды и статус SLO
+    explain: true

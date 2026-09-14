@@ -1,0 +1,43 @@
+# ontology/objects/purpose.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Purpose
+version: 1.0.0
+owner: team-security
+description: Цель обработки данных (PBAC)
+primary_key: pur_id
+backing_dataset: gold.purpose
+provenance: row
+freshness_slo: 0s
+markings: [INTERNAL]
+sources: [pbac_registry]
+properties: 
+  - name: name
+    label: Название
+    type: string
+    key: true
+  - name: legal_basis
+    label: Правовое основание
+    type: string
+    key: true
+  - name: categories
+    label: Категории данных
+    type: string
+    key: true
+  - name: expires_at
+    label: Срок
+    type: date
+    key: true
+  - name: owner
+    label: Владелец
+    type: string
+    key: true
+  - name: members
+    label: Участников
+    type: number
+    key: true
+links: 
+  - name: accessed_under
+    direction: in
+    to: [Employee]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+actions: [assign_purpose]

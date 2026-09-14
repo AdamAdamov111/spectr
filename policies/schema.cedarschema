@@ -1,0 +1,33 @@
+// Cedar entity schema for SPECTR PDP (ADR-04). Subject/resource/action/context attributes follow spec 5.3 §3.2.
+namespace Spectr {
+  entity User {
+    login: String,
+    roles: Set<String>,
+    clearance_level: String,          // PUBLIC | INTERNAL | CONFIDENTIAL | SECRET
+    categories: Set<String>,          // FIN, PII, PROD, GEO, HR, LEGAL
+    subsidiary?: String,
+    attestations: Set<String>,
+    device_posture: String,
+  };
+  entity Purpose {
+    id: String,
+    allowed_data_categories: Set<String>,
+    members: Set<User>,
+    active: Bool,
+    expires_at: Long,
+  };
+  entity Object {
+    type: String,
+    markings: Set<String>,            // levels + categories, from the row bitmap _mk
+    level: String,
+    owner: String,
+    jurisdiction: String,
+    legal_hold: Bool,
+    group_size?: Long,                // for aggregates (k-anonymity)
+  };
+  entity Link { from: Object, to: Object, markings: Set<String> };
+  action read, search, aggregate, export, traverse, explain, copy appliesTo { principal: User, resource: Object, context: Ctx };
+  action "action:execute:flag_counterparty", "action:execute:create_maintenance_order", "action:execute:change_order_priority", "action:execute:open_incident", "action:execute:request_documents", "action:execute:assign_purpose"
+    appliesTo { principal: User, resource: Object, context: Ctx };
+  type Ctx = { purpose: Purpose, now: Long, network: String, session_risk: Long };
+}

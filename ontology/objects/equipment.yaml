@@ -1,0 +1,84 @@
+# ontology/objects/equipment.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Equipment
+version: 1.3.0
+owner: team-toir
+description: "Единица оборудования на активе (насос, задвижка, компрессор, ёмкость)"
+primary_key: eq_id
+backing_dataset: gold.equipment
+provenance: full
+freshness_slo: 15m
+markings: [INTERNAL]
+sources: [sap_pm, onec_toir, passports]
+properties: 
+  - name: inventory_no
+    label: Инвентарный номер
+    type: string
+    sources: [sap_pm.equi.equnr, onec_toir.oborudovanie.inv_nomer]
+    survivorship: prefer_source(sap_pm)
+    key: true
+  - name: name
+    label: Наименование
+    type: string
+    sources: [sap_pm.equi.eqktx]
+    key: true
+  - name: equipment_class
+    label: Класс
+    type: enum
+    key: true
+  - name: operating_hours
+    label: Наработка
+    type: number
+    unit: ч
+    sources: [sap_pm.equi.oper_hours]
+    freshness_slo: 15m
+    live: true
+  - name: health_index
+    label: Индекс состояния
+    type: decimal
+    derived_by: functions.equipment_health_index
+    key: true
+  - name: criticality
+    label: Критичность
+    type: enum
+    key: true
+  - name: purchase_cost
+    label: Стоимость приобретения
+    type: money
+    markings: [FIN]
+    masking: null_for_unauthorized
+    sources: [sap_pm.anla.answl]
+  - name: commissioned
+    label: Ввод в эксплуатацию
+    type: date
+links: 
+  - name: has_equipment
+    direction: in
+    to: [Well, PumpStation, Tank, PipelineSegment]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: measured_by
+    direction: out
+    to: [Sensor]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: detected_on
+    direction: in
+    to: [Anomaly]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+  - name: maintains
+    direction: in
+    to: [MaintenanceOrder]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+  - name: mentions
+    direction: in
+    to: [Document]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+  - name: occurred_at
+    direction: in
+    to: [Incident]
+    cardinality: "N:1"
+    markings: [CONFIDENTIAL]
+actions: [create_maintenance_order, open_incident]

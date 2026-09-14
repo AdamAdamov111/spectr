@@ -1,0 +1,65 @@
+# ontology/objects/procurement.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Procurement
+version: 1.2.0
+owner: team-procurement
+description: Закупочная процедура по 223-ФЗ
+primary_key: prc_id
+backing_dataset: gold.procurement
+provenance: full
+freshness_slo: 1h
+markings: [INTERNAL]
+sources: [eis, etp]
+properties: 
+  - name: notice_no
+    label: Номер извещения
+    type: string
+    sources: [eis.notice.number]
+    key: true
+  - name: subject
+    label: Предмет
+    type: string
+    key: true
+  - name: nmc
+    label: НМЦ
+    type: money
+    markings: [FIN]
+    masking: null_for_unauthorized
+    sources: [eis.notice.nmc]
+    key: true
+  - name: method
+    label: Способ
+    type: enum
+    key: true
+  - name: published
+    label: Опубликована
+    type: date
+    key: true
+  - name: bids_count
+    label: Заявок
+    type: number
+    key: true
+  - name: winner_discount
+    label: Снижение
+    type: percent
+    unit: %
+  - name: cartel_pattern
+    label: Картельный паттерн
+    type: decimal
+    derived_by: functions.cartel_pattern
+    key: true
+  - name: status
+    label: Статус
+    type: enum
+    key: true
+links: 
+  - name: participated_in
+    direction: in
+    to: [Organization]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+  - name: awarded
+    direction: out
+    to: [Contract]
+    cardinality: "1:1"
+    markings: [CONFIDENTIAL]
+actions: []

@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SPECTR ObjectType",
+  "type": "object",
+  "required": [
+    "object_type",
+    "version",
+    "owner",
+    "description",
+    "primary_key",
+    "backing_dataset",
+    "provenance",
+    "freshness_slo",
+    "markings",
+    "properties"
+  ],
+  "properties": {
+    "object_type": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z]+$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 10
+    },
+    "primary_key": {
+      "type": "string"
+    },
+    "backing_dataset": {
+      "type": "string",
+      "pattern": "^(gold|enrich)\\."
+    },
+    "provenance": {
+      "enum": [
+        "full",
+        "row",
+        "dataset"
+      ]
+    },
+    "freshness_slo": {
+      "type": "string",
+      "pattern": "^\\d+(s|m|h|d)$"
+    },
+    "markings": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "PUBLIC",
+          "INTERNAL",
+          "CONFIDENTIAL",
+          "SECRET",
+          "FIN",
+          "PII",
+          "PROD",
+          "GEO",
+          "HR",
+          "LEGAL",
+          "SYNTHETIC"
+        ]
+      }
+    },
+    "properties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "type": {
+            "enum": [
+              "string",
+              "number",
+              "money",
+              "decimal",
+              "enum",
+              "date",
+              "datetime",
+              "bool",
+              "geo",
+              "text",
+              "percent"
+            ]
+          },
+          "markings": {
+            "type": "array"
+          },
+          "masking": {
+            "enum": [
+              "null_for_unauthorized",
+              "partial"
+            ]
+          },
+          "derived_by": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+# ontology/objects/holding.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Holding
+version: 1.0.0
+owner: team-core
+description: Головная компания холдинга
+primary_key: hld_id
+backing_dataset: gold.holding
+provenance: row
+freshness_slo: 1d
+markings: [INTERNAL]
+sources: [manual, egrul]
+properties: 
+  - name: name
+    label: Название
+    type: string
+    sources: [manual.holding.name]
+    key: true
+  - name: inn
+    label: ИНН
+    type: string
+    sources: [egrul.ul.inn]
+    key: true
+  - name: subsidiaries
+    label: ДЗО
+    type: number
+    key: true
+links: 
+  - name: owns
+    direction: out
+    to: [Subsidiary]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+actions: []

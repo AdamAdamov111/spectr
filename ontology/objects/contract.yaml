@@ -1,0 +1,79 @@
+# ontology/objects/contract.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Contract
+version: 1.4.0
+owner: team-procurement
+description: Договор с контрагентом
+primary_key: ctr_id
+backing_dataset: gold.contract
+provenance: full
+freshness_slo: 15m
+markings: [CONFIDENTIAL]
+sources: [sap_mm, onec, sed]
+properties: 
+  - name: number
+    label: Номер
+    type: string
+    sources: [sap_mm.ekko.ebeln]
+    key: true
+  - name: subject
+    label: Предмет
+    type: string
+    sources: [sed.contract.subject]
+    key: true
+  - name: amount
+    label: Сумма
+    type: money
+    markings: [FIN]
+    masking: null_for_unauthorized
+    sources: [sap_mm.ekko.netwr]
+    key: true
+  - name: signed
+    label: Подписан
+    type: date
+    key: true
+  - name: valid_to
+    label: Срок
+    type: date
+    key: true
+  - name: status
+    label: Статус
+    type: enum
+    key: true
+    live: true
+  - name: execution
+    label: Исполнение
+    type: percent
+    unit: %
+    derived_by: functions.contract_execution_status
+  - name: overdue_days
+    label: Просрочка
+    type: number
+    unit: дн
+    derived_by: functions.contract_execution_status
+links: 
+  - name: under_contract
+    direction: in
+    to: [MaintenanceOrder, Shipment]
+    cardinality: "N:1"
+    markings: [CONFIDENTIAL]
+  - name: party_to
+    direction: in
+    to: [Organization, Subsidiary]
+    cardinality: "N:M"
+    markings: [CONFIDENTIAL]
+  - name: awarded
+    direction: in
+    to: [Procurement]
+    cardinality: "1:1"
+    markings: [CONFIDENTIAL]
+  - name: mentions
+    direction: in
+    to: [Document]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+  - name: attached_to
+    direction: in
+    to: [Document]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+actions: [request_documents]

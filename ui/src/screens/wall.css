@@ -1,0 +1,19 @@
+.wall { position: fixed; inset: 0; display: grid; grid-template-columns: 2fr 1fr; background: #05080c; color: #e6edf3; font-size: 21px; }
+.wall-map { position: relative; }
+.wall-corner { position: absolute; left: 16px; top: 12px; display: flex; gap: 24px; align-items: baseline; font-size: 16px; }
+.wall-corner .mono { font-size: 40px; color: #22d3ee; letter-spacing: 0.1em; }
+.wall-side { border-left: 1px solid #1e2935; display: flex; flex-direction: column; padding: 20px; gap: 20px; overflow: hidden; }
+.wall-h { font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.2em; color: #5c6b7a; margin-bottom: 12px; text-transform: uppercase; }
+.wall-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.wall-kpi { border: 1px solid #1e2935; background: #0d131b; padding: 14px 18px; border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
+.wall-kpi span { font-size: 13px; letter-spacing: 0.1em; color: #93a1b0; text-transform: uppercase; font-family: var(--font-mono); }
+.wall-kpi b { font-size: 36px; font-family: var(--font-mono); }
+.wall-kpi b small { font-size: 14px; color: #5c6b7a; }
+.wall-kpi.danger b { color: #ef4444; } .wall-kpi.warn b { color: #f59e0b; }
+.wall-list, .wall-feed { display: flex; flex-direction: column; gap: 8px; }
+.wall-row { display: flex; align-items: center; gap: 12px; font-size: 18px; }
+.wall-feed { flex: 1; overflow: hidden; }
+.wall-incident { border: 3px solid #ef4444; padding: 24px; border-radius: 8px; background: rgba(239, 68, 68, 0.08); animation: sp-pulse 2s infinite; }
+.wall-incident-h { font-family: var(--font-mono); letter-spacing: 0.3em; color: #ef4444; font-size: 20px; }
+.wall-incident-t { font-size: 28px; margin: 10px 0; }
+.wall-exit { font-size: 13px; color: #5c6b7a; font-family: var(--font-mono); }

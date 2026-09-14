@@ -1,0 +1,51 @@
+# ontology/objects/person.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Person
+version: 1.1.0
+owner: team-er
+description: "Физическое лицо: учредитель, директор, упомянутый в документах"
+primary_key: per_id
+backing_dataset: gold.person
+provenance: full
+freshness_slo: 1d
+markings: [CONFIDENTIAL]
+sources: [egrul, sed, hr]
+properties: 
+  - name: full_name
+    label: ФИО
+    type: string
+    markings: [PII]
+    masking: partial
+    sources: [egrul.fl.fio]
+    key: true
+  - name: inn
+    label: ИНН
+    type: string
+    markings: [PII]
+    masking: partial
+    sources: [egrul.fl.inn]
+  - name: roles
+    label: Роли
+    type: string
+    key: true
+  - name: orgs_count
+    label: Организаций
+    type: number
+    derived_by: functions.person_orgs
+    key: true
+links: 
+  - name: founder_of
+    direction: out
+    to: [Organization]
+    cardinality: "N:M"
+    markings: [CONFIDENTIAL]
+  - name: director_of
+    direction: out
+    to: [Organization]
+    cardinality: "N:M"
+    markings: [CONFIDENTIAL]
+  - name: mentions
+    direction: in
+    to: [Document]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+actions: []

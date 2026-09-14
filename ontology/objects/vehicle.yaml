@@ -1,0 +1,37 @@
+# ontology/objects/vehicle.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Vehicle
+version: 1.0.0
+owner: team-logistics
+description: Единица техники с телематикой
+primary_key: veh_id
+backing_dataset: gold.vehicle
+provenance: dataset
+freshness_slo: 30s
+markings: [INTERNAL]
+sources: [glonass]
+properties: 
+  - name: plate
+    label: Госномер
+    type: string
+    key: true
+  - name: kind
+    label: Тип
+    type: enum
+    key: true
+  - name: status
+    label: Статус
+    type: enum
+    key: true
+    live: true
+  - name: position
+    label: Позиция
+    type: geo
+    markings: [GEO]
+    masking: null_for_unauthorized
+links: 
+  - name: transports
+    direction: in
+    to: [Shipment]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+actions: []

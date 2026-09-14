@@ -1,0 +1,56 @@
+# ontology/objects/tank.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Tank
+version: 1.1.0
+owner: team-transport
+description: Резервуар хранения продукта
+primary_key: tank_id
+backing_dataset: gold.tank
+provenance: row
+freshness_slo: 1m
+markings: [CONFIDENTIAL, PROD]
+sources: [scada, lims]
+properties: 
+  - name: code
+    label: Код
+    type: string
+    key: true
+  - name: volume
+    label: Объём
+    type: number
+    unit: м³
+    key: true
+  - name: level
+    label: Уровень
+    type: percent
+    unit: %
+    markings: [PROD]
+    sources: [scada.tank.level]
+    key: true
+    live: true
+  - name: product
+    label: Продукт
+    type: enum
+    key: true
+  - name: temperature
+    label: Температура
+    type: number
+    unit: °C
+    sources: [scada.tank.temp]
+    live: true
+links: 
+  - name: operates
+    direction: in
+    to: [Subsidiary]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: has_equipment
+    direction: out
+    to: [Equipment]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: connects
+    direction: in
+    to: [Pipeline]
+    cardinality: "N:M"
+    markings: [GEO]
+actions: []

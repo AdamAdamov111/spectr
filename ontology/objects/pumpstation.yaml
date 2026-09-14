@@ -1,0 +1,79 @@
+# ontology/objects/pumpstation.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: PumpStation
+version: 1.3.0
+owner: team-transport
+description: Нефтеперекачивающая станция
+primary_key: nps_id
+backing_dataset: gold.pump_station
+provenance: full
+freshness_slo: 30s
+markings: [CONFIDENTIAL, PROD]
+sources: [scada, sap_pm]
+properties: 
+  - name: code
+    label: Код
+    type: string
+    sources: [sap_pm.iflot.tplnr]
+    key: true
+  - name: capacity
+    label: Мощность
+    type: number
+    unit: м³/ч
+    key: true
+  - name: mode
+    label: Режим
+    type: enum
+    sources: [scada.nps.mode]
+    key: true
+    live: true
+  - name: pressure_in
+    label: Давление вход
+    type: number
+    unit: МПа
+    markings: [PROD]
+    sources: [scada.nps.p_in]
+    live: true
+  - name: pressure_out
+    label: Давление выход
+    type: number
+    unit: МПа
+    markings: [PROD]
+    sources: [scada.nps.p_out]
+    live: true
+  - name: pressure_anomaly_score
+    label: Аномалия давления
+    type: decimal
+    derived_by: pipelines.anomaly_v3
+    key: true
+    live: true
+  - name: open_incidents
+    label: Открытых инцидентов
+    type: number
+    key: true
+links: 
+  - name: operates
+    direction: in
+    to: [Subsidiary]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: has_equipment
+    direction: out
+    to: [Equipment]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: detected_on
+    direction: in
+    to: [Anomaly]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+  - name: occurred_at
+    direction: in
+    to: [Incident]
+    cardinality: "N:1"
+    markings: [CONFIDENTIAL]
+  - name: connects
+    direction: in
+    to: [Pipeline]
+    cardinality: "N:M"
+    markings: [GEO]
+actions: [open_incident]

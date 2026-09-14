@@ -1,0 +1,19 @@
+# Marking lattice (spec 5.3 §3.4): levels are totally ordered, categories are compartments; join = max(level) ∪ categories
+levels: [PUBLIC, INTERNAL, CONFIDENTIAL, SECRET]
+categories: [FIN, PII, PROD, GEO, HR, LEGAL, SYNTHETIC]
+bitmap_ids: 
+  PUBLIC: 0
+  INTERNAL: 1
+  CONFIDENTIAL: 2
+  SECRET: 3
+  FIN: 4
+  PII: 5
+  PROD: 6
+  GEO: 7
+  HR: 8
+  LEGAL: 9
+  SYNTHETIC: 10
+declassification: 
+  only_via: sanitizer
+  signatures_required: 2
+  audited: true

@@ -1,0 +1,46 @@
+# ontology/objects/employee.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Employee
+version: 1.0.0
+owner: team-hr
+description: Сотрудник холдинга
+primary_key: emp_id
+backing_dataset: gold.employee
+provenance: row
+freshness_slo: 1h
+markings: [INTERNAL, HR]
+sources: [onec_zup, sap_hcm]
+properties: 
+  - name: tab_no
+    label: Табельный
+    type: string
+    key: true
+  - name: full_name
+    label: ФИО
+    type: string
+    markings: [PII]
+    masking: partial
+    key: true
+  - name: position
+    label: Должность
+    type: string
+    key: true
+  - name: unit
+    label: Подразделение
+    type: string
+    key: true
+  - name: clearance
+    label: Допуски
+    type: string
+    markings: [HR]
+links: 
+  - name: performed_by
+    direction: in
+    to: [MaintenanceOrder]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+  - name: accessed_under
+    direction: out
+    to: [Purpose]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+actions: []

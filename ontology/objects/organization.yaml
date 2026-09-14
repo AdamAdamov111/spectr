@@ -1,0 +1,99 @@
+# ontology/objects/organization.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Organization
+version: 2.0.0
+owner: team-er
+description: "Юридическое лицо: golden-объект после Entity Resolution из SAP, 1С, ЕГРЮЛ, ЕИС"
+primary_key: org_id
+backing_dataset: gold.organization
+provenance: full
+freshness_slo: 1h
+markings: [INTERNAL]
+sources: [sap_mm, onec, egrul, eis]
+properties: 
+  - name: name
+    label: Наименование
+    type: string
+    sources: [egrul.ul.name, sap_mm.lfa1.name1, onec.kontragenty.naimenovanie]
+    survivorship: ЕГРЮЛ > SAP > 1С > Mention
+    key: true
+  - name: inn
+    label: ИНН
+    type: string
+    sources: [egrul.ul.inn, sap_mm.lfa1.stcd1]
+    key: true
+  - name: ogrn
+    label: ОГРН
+    type: string
+    sources: [egrul.ul.ogrn]
+  - name: status
+    label: Статус
+    type: enum
+    sources: [egrul.ul.status]
+    survivorship: ЕГРЮЛ
+    key: true
+  - name: region
+    label: Регион
+    type: string
+    key: true
+  - name: address
+    label: Адрес
+    type: string
+    sources: [egrul.ul.address]
+  - name: phone
+    label: Телефон
+    type: string
+    markings: [PII]
+    masking: partial
+    sources: [onec.kontragenty.telefon]
+  - name: risk_score
+    label: Риск-скор
+    type: decimal
+    derived_by: functions.counterparty_risk_score
+    key: true
+  - name: contracts_total
+    label: Сумма договоров
+    type: money
+    markings: [FIN]
+    masking: null_for_unauthorized
+    derived_by: functions.contracts_total
+  - name: registered
+    label: Дата регистрации
+    type: date
+    sources: [egrul.ul.reg_date]
+  - name: control_flag
+    label: На контроле
+    type: bool
+    sources: [crm.counterparty.block_status]
+    key: true
+links: 
+  - name: performed_by
+    direction: in
+    to: [MaintenanceOrder]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+  - name: party_to
+    direction: out
+    to: [Contract]
+    cardinality: "N:M"
+    markings: [CONFIDENTIAL]
+  - name: founder_of
+    direction: out
+    to: [Organization]
+    cardinality: "N:M"
+    markings: [CONFIDENTIAL]
+  - name: director_of
+    direction: in
+    to: [Person]
+    cardinality: "N:M"
+    markings: [CONFIDENTIAL]
+  - name: participated_in
+    direction: out
+    to: [Procurement]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+  - name: mentions
+    direction: in
+    to: [Document]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+actions: [flag_counterparty, request_documents]

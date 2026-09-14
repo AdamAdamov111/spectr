@@ -1,0 +1,49 @@
+# ontology/objects/sensor.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Sensor
+version: 1.0.0
+owner: team-scada
+description: Измерительный канал АСУ ТП
+primary_key: sen_id
+backing_dataset: gold.sensor
+provenance: dataset
+freshness_slo: 5s
+markings: [INTERNAL, PROD]
+sources: [opcua, historian]
+properties: 
+  - name: tag
+    label: Тег
+    type: string
+    sources: [opcua.node.browse_name]
+    key: true
+  - name: kind
+    label: Тип
+    type: enum
+    key: true
+  - name: unit
+    label: Единицы
+    type: string
+    key: true
+  - name: last_value
+    label: Последнее значение
+    type: number
+    markings: [PROD]
+    sources: [opcua.node.value]
+    key: true
+    live: true
+  - name: quality
+    label: Качество
+    type: enum
+    key: true
+    live: true
+links: 
+  - name: measured_by
+    direction: in
+    to: [Equipment]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: detected_on
+    direction: in
+    to: [Anomaly]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+actions: []

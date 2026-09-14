@@ -1,0 +1,32 @@
+# PBAC purposes (spec 5.3 §3.3)
+purposes: 
+  - id: situation_monitoring
+    name: Мониторинг ситуации
+    legal_basis: "Приказ ФСТЭК № 117, регламент СЦ-2026"
+    allowed_data_categories: [PROD, GEO, INTERNAL, CONFIDENTIAL]
+    expires_at: 31.03.2027
+  - id: procurement_check
+    name: Проверка закупок
+    legal_basis: "223-ФЗ ст. 3, положение о СЭБ"
+    allowed_data_categories: [FIN, PII, CONFIDENTIAL, INTERNAL, LEGAL]
+    expires_at: 31.12.2026
+  - id: toir_planning
+    name: Планирование ТОиР
+    legal_basis: Регламент ТОиР-04
+    allowed_data_categories: [PROD, INTERNAL, CONFIDENTIAL]
+    expires_at: 30.06.2027
+  - id: finance_control
+    name: Финансовый контроль
+    legal_basis: Положение о бюджетировании
+    allowed_data_categories: [FIN, CONFIDENTIAL, INTERNAL]
+    expires_at: 31.12.2026
+  - id: incident_investigation_2026_Q3
+    name: Расследование Q3-2026
+    legal_basis: "187-ФЗ, приказ № 88"
+    allowed_data_categories: [LEGAL, CONFIDENTIAL, PII, PROD, GEO, INTERNAL]
+    expires_at: 15.10.2026
+  - id: situation_wall
+    name: Видеостена СЦ
+    legal_basis: Регламент СЦ-2026
+    allowed_data_categories: [INTERNAL]
+    expires_at: 31.12.2027

@@ -1,0 +1,32 @@
+# ontology/objects/wellpad.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: WellPad
+version: 1.0.0
+owner: team-prod
+description: Кустовая площадка скважин
+primary_key: pad_id
+backing_dataset: gold.wellpad
+provenance: row
+freshness_slo: 1d
+markings: [INTERNAL]
+sources: [manual]
+properties: 
+  - name: code
+    label: Код
+    type: string
+    key: true
+  - name: wells
+    label: Скважин
+    type: number
+    key: true
+  - name: coords
+    label: Координаты
+    type: geo
+    markings: [GEO]
+    masking: null_for_unauthorized
+links: 
+  - name: located_on
+    direction: out
+    to: [WellPad, Field]
+    cardinality: "N:1"
+    markings: [GEO]
+actions: []

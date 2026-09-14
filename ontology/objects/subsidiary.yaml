@@ -1,0 +1,56 @@
+# ontology/objects/subsidiary.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Subsidiary
+version: 1.1.0
+owner: team-core
+description: Дочернее и зависимое общество холдинга
+primary_key: dzo_id
+backing_dataset: gold.subsidiary
+provenance: row
+freshness_slo: 1d
+markings: [INTERNAL]
+sources: [egrul, it_landscape]
+properties: 
+  - name: name
+    label: Название
+    type: string
+    sources: [egrul.ul.name]
+    key: true
+  - name: inn
+    label: ИНН
+    type: string
+    sources: [egrul.ul.inn]
+    key: true
+  - name: region
+    label: Регион
+    type: string
+    key: true
+  - name: kind
+    label: Тип
+    type: enum
+    key: true
+  - name: erp
+    label: ERP-система
+    type: string
+    sources: [it_landscape.systems.erp]
+    key: true
+  - name: employees
+    label: Сотрудников
+    type: number
+    markings: [HR]
+links: 
+  - name: owns
+    direction: in
+    to: [Holding]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: operates
+    direction: out
+    to: [Field, Pipeline, PumpStation, Tank]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: party_to
+    direction: out
+    to: [Contract]
+    cardinality: "N:M"
+    markings: [CONFIDENTIAL]
+actions: []

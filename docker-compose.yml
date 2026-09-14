@@ -1,0 +1,154 @@
+# SPECTR local stand (spec part 7.3, reference). `make up && make seed` on a machine with Docker 26+ / Compose v2.
+# Image tags are a September-2026 reference; pin them in .env on the first successful run and mirror into Harbor for the isolated perimeter.
+name: spectr
+services:
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment: { MINIO_ROOT_USER: ${MINIO_ROOT_USER:-spectr}, MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-spectrspectrspectr} }
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [minio:/data]
+
+  postgres:
+    image: postgres:16
+    environment: { POSTGRES_USER: spectr, POSTGRES_PASSWORD: ${PG_PASSWORD:-spectr}, POSTGRES_DB: spectr }
+    command: ["postgres", "-c", "wal_level=logical"]
+    volumes: [pg:/var/lib/postgresql/data, ./deploy/pg/init:/docker-entrypoint-initdb.d]
+    ports: ["5432:5432"]
+
+  nessie:
+    image: ghcr.io/projectnessie/nessie:0.104.0
+    environment:
+      nessie.version.store.type: JDBC2
+      quarkus.datasource.jdbc.url: jdbc:postgresql://postgres:5432/nessie
+      quarkus.datasource.username: spectr
+      quarkus.datasource.password: ${PG_PASSWORD:-spectr}
+    ports: ["19120:19120"]
+    depends_on: [postgres]
+
+  redpanda:                       # Kafka API for the stand; production uses apache/kafka (ADR-13)
+    image: redpandadata/redpanda:v24.3.5
+    command: [redpanda, start, --smp, "1", --memory, 1G, --overprovisioned, --kafka-addr, PLAINTEXT://0.0.0.0:9092, --advertise-kafka-addr, PLAINTEXT://redpanda:9092, --schema-registry-addr, 0.0.0.0:8081]
+    ports: ["9092:9092", "8081:8081"]
+
+  debezium:
+    image: debezium/connect:3.0
+    environment: { BOOTSTRAP_SERVERS: redpanda:9092, GROUP_ID: spectr-connect, CONFIG_STORAGE_TOPIC: _connect_configs, OFFSET_STORAGE_TOPIC: _connect_offsets, STATUS_STORAGE_TOPIC: _connect_status }
+    ports: ["8083:8083"]
+    depends_on: [redpanda, postgres-sap]
+
+  trino:
+    image: trinodb/trino:470
+    volumes: [./deploy/trino/etc:/etc/trino]
+    ports: ["8080:8080"]
+    depends_on: [nessie, minio]
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.0
+    environment: { discovery.type: single-node, OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OS_ADMIN_PASSWORD:-Spectr-Admin-2026!}, plugins.security.disabled: "false" }
+    ports: ["9200:9200"]
+    volumes: [os:/usr/share/opensearch/data]
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3
+    ports: ["8123:8123", "9009:9000"]
+    volumes: [ch:/var/lib/clickhouse, ./deploy/clickhouse:/docker-entrypoint-initdb.d]
+
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    ports: ["6333:6333"]
+    volumes: [qd:/qdrant/storage]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.1
+    command: [start-dev, --import-realm]
+    environment: { KC_BOOTSTRAP_ADMIN_USERNAME: admin, KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD:-admin} }
+    volumes: [./deploy/keycloak/realm-spectr.json:/opt/keycloak/data/import/realm-spectr.json]
+    ports: ["8180:8080"]
+
+  temporal:
+    image: temporalio/auto-setup:1.26
+    environment: { DB: postgres12, DB_PORT: 5432, POSTGRES_USER: spectr, POSTGRES_PWD: ${PG_PASSWORD:-spectr}, POSTGRES_SEEDS: postgres }
+    ports: ["7233:7233"]
+    depends_on: [postgres]
+  temporal-ui:
+    image: temporalio/ui:2.34.0
+    environment: { TEMPORAL_ADDRESS: temporal:7233 }
+    ports: ["8233:8080"]
+
+  dagster:
+    build: ./pipelines
+    environment: { DAGSTER_PG_HOST: postgres, SPECTR_ICEBERG_CATALOG: http://nessie:19120/iceberg }
+    ports: ["3000:3000"]
+    volumes: [./pipelines:/app, ./ontology:/ontology]
+    depends_on: [postgres, nessie, minio, redpanda]
+
+  pdp:
+    build: ./services/pdp
+    volumes: [./policies:/policies:ro]
+    ports: ["8500:8500"]
+
+  object-api:
+    build: ./services/object-api
+    environment: { PDP_URL: http://pdp:8500, OIDC_ISSUER: http://keycloak:8080/realms/spectr, OPENSEARCH_URL: https://opensearch:9200, PG_DSN: postgresql://spectr:${PG_PASSWORD:-spectr}@postgres:5432/spectr, CLICKHOUSE_URL: http://clickhouse:8123 }
+    ports: ["8600:8600"]
+    depends_on: [pdp, keycloak, opensearch, postgres, clickhouse]
+
+  materializer:
+    build: ./services/materializer
+    environment: { KAFKA: redpanda:9092 }
+    depends_on: [redpanda, opensearch, postgres, clickhouse]
+
+  actions:
+    build: ./services/actions
+    environment: { TEMPORAL: temporal:7233, PG_DSN: postgresql://spectr:${PG_PASSWORD:-spectr}@postgres:5432/spectr }
+    depends_on: [temporal, postgres]
+
+  audit:
+    build: ./services/audit
+    environment: { KAFKA: redpanda:9092, WORM_BUCKET: spectr-audit-worm, MINIO: http://minio:9000 }
+    depends_on: [redpanda, minio, clickhouse]
+
+  model-gateway:
+    build: ./services/model-gateway
+    environment: { LLM_URL: http://vllm:8000/v1, AUDIT_KAFKA: redpanda:9092 }
+    ports: ["8700:8700"]
+
+  vllm:                             # CPU variant: llama.cpp server with Qwen2.5-7B Q4; GPU: docker-compose.gpu.yml
+    image: ghcr.io/ggml-org/llama.cpp:server
+    command: ["-m", "/models/qwen2.5-7b-instruct-q4_k_m.gguf", "--port", "8000", "-c", "8192", "--jinja"]
+    volumes: [./demo/models:/models]
+
+  agent-runtime:
+    build: ./services/agent-runtime
+    environment: { OBJECT_API: http://object-api:8600, GATEWAY: http://model-gateway:8700 }
+    ports: ["8800:8800"]
+
+  ui:
+    build: ./ui
+    ports: ["5173:5173"]
+    environment: { VITE_OBJECT_API: http://localhost:8600, VITE_OIDC: http://localhost:8180/realms/spectr }
+
+  # demo source stubs
+  postgres-sap:                    # "SAP" replica (EQUI, AUFK, EKKO, LFA1, …)
+    image: postgres:16
+    command: ["postgres", "-c", "wal_level=logical"]
+    environment: { POSTGRES_USER: sap, POSTGRES_PASSWORD: sap, POSTGRES_DB: sap }
+  onec-mock:                       # 1С OData mock (FastAPI)
+    build: ./demo/sources/onec-odata-mock
+    ports: ["8900:8900"]
+  opcua-sim:                       # SCADA simulator for НПС/tanks
+    build: ./demo/sources/opcua-sim
+    ports: ["4840:4840"]
+  sed-files:                       # document catalogue (acts, contracts) in MinIO
+    build: ./demo/sources/sed-files
+
+  grafana:
+    image: grafana/grafana:11.5.0
+    ports: ["3001:3000"]
+    volumes: [./deploy/grafana:/etc/grafana/provisioning]
+  prometheus:
+    image: prom/prometheus:v3.2.0
+    volumes: [./deploy/prometheus:/etc/prometheus]
+
+volumes: { minio: {}, pg: {}, os: {}, ch: {}, qd: {} }

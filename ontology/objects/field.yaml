@@ -1,0 +1,52 @@
+# ontology/objects/field.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Field
+version: 1.0.0
+owner: team-geo
+description: Месторождение углеводородов
+primary_key: fld_id
+backing_dataset: gold.field
+provenance: row
+freshness_slo: 1d
+markings: [CONFIDENTIAL]
+sources: [rosnedra, manual]
+properties: 
+  - name: code
+    label: Код
+    type: string
+    key: true
+  - name: name
+    label: Название
+    type: string
+    key: true
+  - name: license
+    label: Лицензионный участок
+    type: string
+    markings: [GEO]
+    key: true
+  - name: reserves_abc1
+    label: Запасы ABC1
+    type: number
+    unit: тыс. т
+    markings: [CONFIDENTIAL, GEO]
+    masking: null_for_unauthorized
+  - name: operator
+    label: Оператор
+    type: string
+    key: true
+links: 
+  - name: operates
+    direction: in
+    to: [Subsidiary]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: located_on
+    direction: in
+    to: [Well, WellPad]
+    cardinality: "N:1"
+    markings: [GEO]
+  - name: connects
+    direction: in
+    to: [Pipeline]
+    cardinality: "N:M"
+    markings: [GEO]
+actions: []

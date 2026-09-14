@@ -1,0 +1,26 @@
+# ontology/objects/mention.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Mention
+version: 1.0.0
+owner: team-nlp
+description: Извлечённое NLP упоминание сущности в документе
+primary_key: men_id
+backing_dataset: enrich.mention
+provenance: full
+freshness_slo: 5m
+markings: [INTERNAL]
+sources: [nlp]
+properties: 
+  - name: span
+    label: Фрагмент
+    type: text
+    key: true
+  - name: confidence
+    label: Confidence
+    type: decimal
+    key: true
+  - name: model
+    label: Модель
+    type: string
+    key: true
+links: []
+actions: []

@@ -1,0 +1,28 @@
+# ontology/objects/bid.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Bid
+version: 1.0.0
+owner: team-procurement
+description: Заявка участника закупки
+primary_key: bid_id
+backing_dataset: gold.bid
+provenance: row
+freshness_slo: 1h
+markings: [INTERNAL]
+sources: [etp]
+properties: 
+  - name: price
+    label: Цена
+    type: money
+    markings: [FIN]
+    masking: null_for_unauthorized
+    key: true
+  - name: result
+    label: Результат
+    type: enum
+    key: true
+  - name: submitted
+    label: Подана
+    type: datetime
+    key: true
+links: []
+actions: []

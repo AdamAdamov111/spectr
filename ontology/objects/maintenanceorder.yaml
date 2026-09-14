@@ -1,0 +1,69 @@
+# ontology/objects/maintenanceorder.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: MaintenanceOrder
+version: 1.2.0
+owner: team-toir
+description: Заявка на техническое обслуживание или ремонт
+primary_key: mo_id
+backing_dataset: gold.maintenance_order
+provenance: full
+freshness_slo: 5m
+markings: [INTERNAL]
+sources: [sap_pm, onec_toir]
+properties: 
+  - name: number
+    label: Номер
+    type: string
+    sources: [sap_pm.aufk.aufnr, onec_toir.zayavki.nomer]
+    key: true
+  - name: kind
+    label: Тип
+    type: enum
+    key: true
+  - name: priority
+    label: Приоритет
+    type: enum
+    key: true
+  - name: status
+    label: Статус
+    type: enum
+    sources: [sap_pm.aufk.stat, onec_toir.zayavki.status]
+    key: true
+    live: true
+  - name: planned
+    label: План
+    type: date
+    key: true
+  - name: actual
+    label: Факт
+    type: date
+  - name: cost
+    label: Стоимость
+    type: money
+    markings: [FIN]
+    masking: null_for_unauthorized
+    sources: [sap_pm.aufk.cost]
+  - name: source_system
+    label: Система-источник
+    type: string
+links: 
+  - name: maintains
+    direction: out
+    to: [Equipment]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+  - name: performed_by
+    direction: out
+    to: [Organization, Employee]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+  - name: under_contract
+    direction: out
+    to: [Contract]
+    cardinality: "N:1"
+    markings: [CONFIDENTIAL]
+  - name: attached_to
+    direction: in
+    to: [Document]
+    cardinality: "N:M"
+    markings: [INTERNAL]
+actions: [change_order_priority]

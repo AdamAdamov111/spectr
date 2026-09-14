@@ -1,0 +1,163 @@
+# Link types (spec 3.2)
+ontology_version: 1.4.2
+links: 
+  - name: owns
+    label: владеет
+    inverse_label: принадлежит
+    from: [Holding]
+    to: [Subsidiary]
+    cardinality: "1:N"
+    source: ЕГРЮЛ (доля > 50%)
+    markings: [INTERNAL]
+  - name: operates
+    label: эксплуатирует
+    inverse_label: эксплуатируется
+    from: [Subsidiary]
+    to: [Field, Pipeline, PumpStation, Tank]
+    cardinality: "1:N"
+    source: Справочники
+    markings: [INTERNAL]
+  - name: located_on
+    label: расположен на
+    inverse_label: содержит
+    from: [Well, WellPad]
+    to: [WellPad, Field]
+    cardinality: "N:1"
+    source: Справочники
+    markings: [GEO]
+  - name: has_equipment
+    label: имеет оборудование
+    inverse_label: установлено на
+    from: [Well, PumpStation, Tank, PipelineSegment]
+    to: [Equipment]
+    cardinality: "1:N"
+    source: SAP PM функциональные места
+    markings: [INTERNAL]
+  - name: measured_by
+    label: измеряется
+    inverse_label: измеряет
+    from: [Equipment]
+    to: [Sensor]
+    cardinality: "1:N"
+    source: Конфигурация SCADA
+    markings: [INTERNAL]
+  - name: detected_on
+    label: обнаружена на
+    inverse_label: аномалии
+    from: [Anomaly]
+    to: [Sensor, Equipment, PumpStation]
+    cardinality: "N:1"
+    source: ML-пайплайн
+    markings: [INTERNAL]
+  - name: maintains
+    label: обслуживает
+    inverse_label: заявки ТОиР
+    from: [MaintenanceOrder]
+    to: [Equipment]
+    cardinality: "N:1"
+    source: SAP PM
+    markings: [INTERNAL]
+  - name: performed_by
+    label: выполняет
+    inverse_label: выполняет заявки
+    from: [MaintenanceOrder]
+    to: [Organization, Employee]
+    cardinality: "N:1"
+    source: "SAP PM, 1С"
+    markings: [INTERNAL]
+  - name: under_contract
+    label: по договору
+    inverse_label: включает
+    from: [MaintenanceOrder, Shipment]
+    to: [Contract]
+    cardinality: "N:1"
+    source: "SAP, ER по номеру"
+    markings: [CONFIDENTIAL]
+  - name: party_to
+    label: сторона договора
+    inverse_label: стороны
+    from: [Organization, Subsidiary]
+    to: [Contract]
+    cardinality: "N:M"
+    source: "SAP MM, СЭД"
+    markings: [CONFIDENTIAL]
+  - name: founder_of
+    label: учредитель
+    inverse_label: учредители
+    from: [Person, Organization]
+    to: [Organization]
+    cardinality: "N:M"
+    source: ЕГРЮЛ
+    markings: [CONFIDENTIAL]
+  - name: director_of
+    label: директор
+    inverse_label: директор
+    from: [Person]
+    to: [Organization]
+    cardinality: "N:M"
+    source: "ЕГРЮЛ, Mention (с confidence)"
+    markings: [CONFIDENTIAL]
+  - name: participated_in
+    label: участвовал в закупке
+    inverse_label: участники
+    from: [Organization]
+    to: [Procurement]
+    cardinality: "N:M"
+    source: "ЕИС, ЭТП"
+    markings: [INTERNAL]
+  - name: awarded
+    label: заключён договор
+    inverse_label: по закупке
+    from: [Procurement]
+    to: [Contract]
+    cardinality: "1:1"
+    source: ЕИС
+    markings: [CONFIDENTIAL]
+  - name: mentions
+    label: упоминает
+    inverse_label: упомянут в
+    from: [Document]
+    to: [Organization, Person, Contract, Equipment]
+    cardinality: "N:M"
+    source: "NLP + ER, confidence"
+    markings: [INTERNAL]
+  - name: attached_to
+    label: приложен к
+    inverse_label: документы
+    from: [Document]
+    to: [Contract, Incident, MaintenanceOrder]
+    cardinality: "N:M"
+    source: СЭД
+    markings: [INTERNAL]
+  - name: occurred_at
+    label: произошёл на
+    inverse_label: инциденты
+    from: [Incident]
+    to: [Equipment, PipelineSegment, PumpStation]
+    cardinality: "N:1"
+    source: Журнал
+    markings: [CONFIDENTIAL]
+  - name: transports
+    label: транспортируется
+    inverse_label: отгрузки
+    from: [Shipment]
+    to: [Pipeline, Vehicle]
+    cardinality: "N:1"
+    source: "SAP SD, телематика"
+    markings: [INTERNAL]
+  - name: accessed_under
+    label: доступ под целью
+    inverse_label: участники
+    from: [Employee]
+    to: [Purpose]
+    cardinality: "N:M"
+    source: PBAC
+    markings: [INTERNAL]
+  - name: connects
+    label: соединяет
+    inverse_label: соединён
+    from: [Pipeline]
+    to: [PumpStation, Field, Tank]
+    cardinality: "N:M"
+    source: Реестр ОПО
+    markings: [GEO]
