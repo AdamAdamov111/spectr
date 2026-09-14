@@ -99,9 +99,9 @@ code, .mono { font-family: var(--font-mono); font-variant-ligatures: none; lette
 
 /* ambient ground: dot pattern + spotlights (Magic UI dot-pattern / Aceternity spotlight, in pure CSS) */
 .ground { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
-.ground::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px); background-size: 22px 22px; mask-image: radial-gradient(ellipse at 30% 20%, black 0%, transparent 70%); opacity: 0.6; }
+.ground::before { content: ''; position: absolute; inset: 0; background: radial-gradient(1200px 700px at 50% -10%, rgba(255, 255, 255, 0.035), transparent 60%); }
 .ground::after { content: ''; position: absolute; inset: 0; background: radial-gradient(900px 500px at 12% 0%, rgba(34, 211, 238, 0.09), transparent 60%), radial-gradient(800px 500px at 100% 100%, rgba(99, 102, 241, 0.09), transparent 60%); }
-:root[data-theme='light'] .ground::before { background-image: radial-gradient(rgba(15, 23, 42, 0.12) 1px, transparent 1px); }
+:root[data-theme='light'] .ground::before { background: none; }
 
 /* keyframes */
 @keyframes sp-fade-in { from { opacity: 0; } to { opacity: 1; } }

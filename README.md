@@ -19,7 +19,7 @@ MVP-стенд по инженерному блюпринту SPECTR (верси
 cd ui && npm install && npm run dev
 ```
 
-Откройте http://localhost:5173. Демо-пользователи: `sc_head` (руководитель СЦ), `toir_eng` (инженер ТОиР), `seb_analyst` (СЭБ, допуск FIN+PII под целью `procurement_check`), `analyst_open` (без допусков). Ключ доступа сообщается отдельно.
+Откройте http://localhost:5173. Операторы: `sc_head` (руководитель СЦ), `toir_eng` (инженер ТОиР), `seb_analyst` (СЭБ, допуск FIN+PII под целью `procurement_check`), `analyst_open` (без допусков). Пароль для всех: **NickThe001**.
 
 Статическая сборка для публикации: `SPECTR_BASE=/spectr/ npm run build` → `ui/dist`.
 
