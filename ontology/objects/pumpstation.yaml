@@ -73,7 +73,7 @@ links:
     markings: [CONFIDENTIAL]
   - name: connects
     direction: in
-    to: [Pipeline]
+    to: [Pipeline, PowerLine]
     cardinality: "N:M"
     markings: [GEO]
 actions: [open_incident]

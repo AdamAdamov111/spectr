@@ -1,14 +1,13 @@
 // U13 ИИ-помощник: потоковый ответ, chips объектов, трасса инструментов, предложенные действия, верификация ссылок.
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Send, ChevronRight, Check, ShieldAlert, Bot } from 'lucide-react'
-import { askAgent, get as getObject, audit, type AgentReply } from '../data/api'
+import { askAgent, get as getObject, audit, world, type AgentReply } from '../data/api'
 import { useStore, useSimulatedSession, reducedMotion } from '../app/store'
 import { ObjectChip, Kbd } from '../components/ui'
 import { nextDecisionId } from '../data/security'
 import { ACTION_BY_NAME } from '../data/ontology'
 
 interface Msg { id: number; role: 'user' | 'agent'; text: string; reply?: AgentReply; shown: number; verified: Set<string>; traceOpen: boolean; done: boolean }
-const SUGGEST = ['Какие подрядчики НПС-2 связаны с ООО Вектор и сорвали сроки за квартал?', 'Какое оборудование откажет первым?', 'Справка по ООО Стрела', 'Что известно о Насос-104?', 'Кто такой Иванов И.И.?']
 
 export function AgentScreen() {
   const session = useSimulatedSession(); const openAction = useStore(s => s.openAction)
@@ -16,6 +15,7 @@ export function AgentScreen() {
   const bottom = useRef<HTMLDivElement>(null); const seq = useRef(1)
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
   const rm = reducedMotion()
+  const SUGGEST = world().domain.agentSuggest
   async function ask(text: string) {
     if (!text.trim() || busy) return
     setQ(''); setBusy(true)

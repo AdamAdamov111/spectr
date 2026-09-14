@@ -82,8 +82,18 @@ interface State {
 const tabIdFor = (t: Omit<Tab, 'id'>) => t.kind === 'screen' ? `s:${t.screen}` : t.kind === 'object' ? `o:${t.objectId}` : t.kind === 'explain' ? `x:${t.objectId}:${t.prop}` : t.kind === 'action' ? `a:${t.action}:${t.objectId}` : `i:${t.title}`
 let toastSeq = 1
 
+// The session survives a page reload within the browser tab (domain switch rebuilds the world via reload); 8 h TTL.
+const SESSION_KEY = 'spectr.session'
+function restoreSession(): Session | null {
+  try { const raw = sessionStorage.getItem(SESSION_KEY); if (!raw) return null; const { s, exp } = JSON.parse(raw); if (Date.now() > exp) return null; return s as Session } catch { return null }
+}
+function persistSession(s: Session | null) {
+  try { if (s) sessionStorage.setItem(SESSION_KEY, JSON.stringify({ s, exp: Date.now() + 8 * 3600_000 })); else sessionStorage.removeItem(SESSION_KEY) } catch { /* ignore */ }
+}
+const restored = restoreSession()
+
 export const useStore = create<State>((set, get) => ({
-  session: null, simulation: null, realSession: null,
+  session: restored, simulation: null, realSession: restored,
   tabs: [{ id: 's:situation', kind: 'screen', screen: 'situation', title: 'Ситуационный центр' }],
   activeTab: 's:situation',
   inspector: { open: typeof window === 'undefined' || window.innerWidth >= 1000, mode: 'object' },
@@ -92,9 +102,9 @@ export const useStore = create<State>((set, get) => ({
   toasts: [], connection: 'ok', sessionExpiresAt: Date.now() + 8 * 3600_000,
   scrambleSeen: new Set(), assembledSeen: new Set(), flyDone: false, wall: false, chaos: { sapStale: false, pdpDown: false }, mapFocus: null, compare: [],
 
-  setSession: s => set({ session: s, realSession: s, simulation: null, sessionExpiresAt: Date.now() + 8 * 3600_000 }),
-  setPurpose: p => set(st => st.session ? { session: { ...st.session, purpose: p } } : {}),
-  logout: () => set({ session: null, realSession: null, simulation: null, tabs: [{ id: 's:situation', kind: 'screen', screen: 'situation', title: 'Ситуационный центр' }], activeTab: 's:situation', flyDone: false, assembledSeen: new Set(), scrambleSeen: new Set() }),
+  setSession: s => { persistSession(s); set({ session: s, realSession: s, simulation: null, sessionExpiresAt: Date.now() + 8 * 3600_000 }) },
+  setPurpose: p => set(st => { if (!st.session) return {}; const session = { ...st.session, purpose: p }; persistSession(session); return { session } }),
+  logout: () => { persistSession(null); set({ session: null, realSession: null, simulation: null, tabs: [{ id: 's:situation', kind: 'screen', screen: 'situation', title: 'Ситуационный центр' }], activeTab: 's:situation', flyDone: false, assembledSeen: new Set(), scrambleSeen: new Set() }) },
   openScreen: k => get().openTab({ kind: 'screen', screen: k, title: SCREENS.find(s => s.key === k)!.label }),
   openObject: (id, opts = {}) => {
     const o = getObject(id); if (!o) return

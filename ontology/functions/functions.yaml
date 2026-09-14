@@ -30,3 +30,8 @@ functions:
     input: метаданные материализации
     output: секунды и статус SLO
     explain: true
+  - name: reliability_indices
+    label: Показатели надёжности SAIDI/SAIFI
+    input: "технологические нарушения, потребители, длительность"
+    output: минуты и число отключений
+    explain: true

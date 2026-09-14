@@ -10,15 +10,16 @@ import { ObjectChip, HealthArc, Panel, Masked, formatProp, Empty } from '../comp
 import { canSee, viewProps } from '../data/security'
 import type { SpObject } from '../data/types'
 import { fmtNum, HOUR, MIN } from '../data/rng'
+import { DOMAINS } from '../data/domain'
 
-const CLASS_RU: Record<string, string> = { PUMP: 'Насос', VALVE: 'Задвижка', COMPRESSOR: 'Компрессор', TANK: 'Ёмкость', MOTOR: 'Электродвигатель', HEAT_EXCHANGER: 'Теплообменник', FILTER: 'Фильтр', SEPARATOR: 'Сепаратор', METER: 'Расходомер', DRIVE: 'Привод', TRANSFORMER: 'Трансформатор', OTHER: 'Прочее' }
+const CLASS_RU: Record<string, string> = Object.fromEntries([...DOMAINS.oilgas.equipmentClasses, ...DOMAINS.energy.equipmentClasses].map(c => [c[0], c[1]]))
 
 export function ToirScreen() {
   const session = useSimulatedSession()
   const openObject = useStore(s => s.openObject); const openAction = useStore(s => s.openAction); const openExplain = useStore(s => s.openExplain)
   const w = world()
   const [dzo, setDzo] = useState<string>(''); const [cls, setCls] = useState(''); const [onlyBad, setOnlyBad] = useState(false)
-  const [sel, setSel] = useState<string>(w.named.pump104)
+  const [sel, setSel] = useState<string>(w.named.focusEquipment)
   const rows = useMemo(() => (w.byType.get('Equipment') || []).filter(e => canSee(session, e) && (!dzo || e.subsidiary === dzo) && (!cls || e.props.equipment_class === cls) && (!onlyBad || (e.props.health_index as number) < 0.5)).sort((a, b) => (a.props.health_index as number) - (b.props.health_index as number)), [dzo, cls, onlyBad, session.login, session.purpose])
   const host = (e: SpObject) => neighbors(session, e.id, { types: ['has_equipment'] }).find(n => n.direction === 'in')?.other
   const openOrders = (e: SpObject) => neighbors(session, e.id, { types: ['maintains'] }).filter(n => n.other.props.status !== 'закрыта')
@@ -38,7 +39,7 @@ export function ToirScreen() {
       <div className="screen-h">
         <span className="screen-title">ТОиР и надёжность</span>
         <select className="input" style={{ width: 160 }} value={dzo} onChange={e => setDzo(e.target.value)}><option value="">Все ДЗО</option>{(w.byType.get('Subsidiary') || []).map(d => <option key={d.id} value={d.id}>{d.label}</option>)}</select>
-        <select className="input" style={{ width: 160 }} value={cls} onChange={e => setCls(e.target.value)}><option value="">Все классы</option>{Object.entries(CLASS_RU).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+        <select className="input" style={{ width: 160 }} value={cls} onChange={e => setCls(e.target.value)}><option value="">Все классы</option>{w.domain.equipmentClasses.map(c => <option key={c[0]} value={c[0]}>{c[1]}</option>)}</select>
         <label className="check"><input type="checkbox" checked={onlyBad} onChange={e => setOnlyBad(e.target.checked)} /> только индекс &lt; 0.5</label>
         <span className="dim mono" style={{ fontSize: 11 }}>{rows.length} ед.</span>
         <span className="grow" />
@@ -58,7 +59,7 @@ function Telemetry({ e }: { e: SpObject }) {
   const sensors = neighbors(session, e.id, { types: ['measured_by'] }).map(n => n.other)
   const anomalies = neighbors(session, e.id, { types: ['detected_on'] }).map(n => n.other)
   const refs = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)]
-  const isPump104 = e.id === w.named.pump104
+  const isPump104 = e.id === w.named.focusEquipment
   const orders = neighbors(session, e.id, { types: ['maintains'] }).filter(n => n.other.props.status !== 'закрыта').map(n => n.other)
   useEffect(() => {
     if (!sensors.length) return
@@ -71,8 +72,8 @@ function Telemetry({ e }: { e: SpObject }) {
       const kind = s.props.kind as string
       const data = telemetry(s.props.tag as string, kind, from, now, 2 * MIN, { anomaly: isPump104 })
       const areas: [{ xAxis: number; name?: string }, { xAxis: number }][] = []
-      if (isPump104 && kind === 'давление') areas.push([{ xAxis: now - 15 * MIN, name: 'anomaly_v3 · 0.87' }, { xAxis: now }])
-      if (isPump104 && kind === 'вибрация') areas.push([{ xAxis: now - 6 * HOUR, name: 'спайк' }, { xAxis: now - 5.2 * HOUR }])
+      if (isPump104 && i === 0) areas.push([{ xAxis: now - 15 * MIN, name: 'anomaly_v3 · 0.87' }, { xAxis: now }])
+      if (isPump104 && i === 1) areas.push([{ xAxis: now - 6 * HOUR, name: 'спайк' }, { xAxis: now - 5.2 * HOUR }])
       for (const a of anomalies) { const f = new Date(String(a.props.window_from).replace(' ', 'T') + 'Z').getTime(); const t = new Date(String(a.props.window_to).replace(' ', 'T') + 'Z').getTime(); if (t > from && !isPump104) areas.push([{ xAxis: Math.max(from, f), name: `${a.props.kind} · ${a.props.score}` }, { xAxis: Math.min(now, t) }]) }
       const c = echarts.init(el, undefined, { renderer: 'canvas' })
       charts.push(c)
@@ -83,7 +84,7 @@ function Telemetry({ e }: { e: SpObject }) {
         tooltip: { trigger: 'axis', backgroundColor: light ? '#fff' : '#252a31', borderColor: light ? '#d5dce3' : '#3a434d', textStyle: { color: light ? '#1c2127' : '#f6f7f9', fontSize: 12 }, axisPointer: { type: 'line', lineStyle: { color: '#4c90f0' } } },
         xAxis: { type: 'time', axisLine: { lineStyle: { color: light ? '#b9c3cd' : '#1e2935' } }, axisLabel: { color: light ? '#4b5967' : '#5c6b7a', fontSize: 10 }, splitLine: { show: false } },
         yAxis: { type: 'value', scale: true, axisLabel: { color: light ? '#4b5967' : '#5c6b7a', fontSize: 10 }, splitLine: { lineStyle: { color: light ? '#e6ebf0' : '#131b25' } } },
-        series: [{ type: 'line', showSymbol: false, data: data.map(d => [d.t, d.v]), lineStyle: { width: 1.6, color: kind === 'давление' ? '#4c90f0' : kind === 'вибрация' ? '#9d8be8' : '#ec9a3c' }, areaStyle: { color: kind === 'давление' ? 'rgba(76,144,240,0.1)' : kind === 'вибрация' ? 'rgba(157,139,232,0.1)' : 'rgba(236,154,60,0.1)' },
+        series: [{ type: 'line', showSymbol: false, data: data.map(d => [d.t, d.v]), lineStyle: { width: 1.6, color: ['#4c90f0', '#9d8be8', '#ec9a3c'][i] }, areaStyle: { color: ['rgba(76,144,240,0.1)', 'rgba(157,139,232,0.1)', 'rgba(236,154,60,0.1)'][i] },
           markArea: areas.length ? { silent: false, itemStyle: { color: 'rgba(231,106,110,0.18)', borderColor: '#e76a6e', borderWidth: 1 }, label: { color: '#e76a6e', fontSize: 11, position: 'insideTop' }, data: areas, animationDelay: rm ? 0 : 800 } : undefined }],
       })
     })
@@ -96,7 +97,7 @@ function Telemetry({ e }: { e: SpObject }) {
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}><ObjectChip o={e} /><HealthArc v={e.props.health_index as number} size={26} /><span className="mono">{(e.props.health_index as number).toFixed(2)}</span><span className="dim" style={{ fontSize: 11 }}>{sensors.length} датчиков · окно 24 ч · шаг 2 мин</span></div>
       {!sensors.length && <Empty text="У этого оборудования нет датчиков SCADA. Индекс состояния считается по наработке, заявкам и возрасту" />}
       <div className="charts">{sensors.slice(0, 3).map((_, i) => <div key={i} ref={refs[i]} className="chart" />)}</div>
-      {(anomalies.length > 0 || isPump104) && <Panel title="Аномалии" dense><div className="col" style={{ padding: 8, gap: 4 }}>{(isPump104 ? [getObject(w.named.anomalyNps2)!, ...anomalies.filter(a => a.id !== w.named.anomalyNps2)] : anomalies).slice(0, 6).map(a => <button key={a.id} className="anom-row" onClick={() => openObject(a.id)}><TriangleAlert size={13} style={{ color: 'var(--sp-danger)' }} /><span className="grow">{a.label}</span><span className="mono">score {String(a.props.score)}</span><span className="dim mono" style={{ fontSize: 10 }}>{String(a.props.window_from).slice(5)} → {String(a.props.window_to).slice(11)}</span></button>)}</div></Panel>}
+      {(anomalies.length > 0 || isPump104) && <Panel title="Аномалии" dense><div className="col" style={{ padding: 8, gap: 4 }}>{(isPump104 ? [getObject(w.named.focusAnomaly)!, ...anomalies.filter(a => a.id !== w.named.focusAnomaly)] : anomalies).slice(0, 6).map(a => <button key={a.id} className="anom-row" onClick={() => openObject(a.id)}><TriangleAlert size={13} style={{ color: 'var(--sp-danger)' }} /><span className="grow">{a.label}</span><span className="mono">score {String(a.props.score)}</span><span className="dim mono" style={{ fontSize: 10 }}>{String(a.props.window_from).slice(5)} → {String(a.props.window_to).slice(11)}</span></button>)}</div></Panel>}
       <Panel title={`Открытые заявки · ${orders.length}`} dense><div className="col" style={{ padding: 8, gap: 4 }}>{orders.length ? orders.slice(0, 8).map(o => <div key={o.id} className="row"><ObjectChip o={o} compact /><span className="dim" style={{ fontSize: 11 }}>{String(o.props.kind)} · {String(o.props.priority)} · {String(o.props.status)} · {String(o.props.source_system)}</span></div>) : <span className="dim">Нет открытых заявок</span>}</div></Panel>
     </div>
   )

@@ -1,10 +1,10 @@
-# ontology/objects/pipeline.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
-object_type: Pipeline
+# ontology/objects/powerline.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: PowerLine
 version: 1.0.0
-owner: team-transport
-description: Магистральный или промысловый трубопровод
-primary_key: pipe_id
-backing_dataset: gold.pipeline
+owner: team-grid
+description: Воздушная или кабельная линия 220/110 кВ
+primary_key: vl_id
+backing_dataset: gold.power_line
 provenance: row
 freshness_slo: 1d
 markings: [CONFIDENTIAL]
@@ -14,10 +14,10 @@ properties:
     label: Код
     type: string
     key: true
-  - name: diameter
-    label: Диаметр
+  - name: voltage_kv
+    label: Напряжение
     type: number
-    unit: мм
+    unit: кВ
     key: true
   - name: length
     label: Протяжённость
@@ -25,15 +25,16 @@ properties:
     unit: км
     markings: [GEO]
     key: true
-  - name: design_pressure
-    label: Давление проектное
+  - name: load_mw
+    label: Переток
     type: number
-    unit: МПа
-  - name: flow
-    label: Расход
-    type: number
-    unit: м³/ч
+    unit: МВт
     markings: [PROD]
+    live: true
+  - name: load_pct
+    label: Загрузка
+    type: percent
+    unit: %
     live: true
   - name: commissioned
     label: Год ввода
@@ -49,11 +50,6 @@ links:
     to: [Well, WellPad, Feeder, Substation, PipelineSegment, LineSegment]
     cardinality: "N:1"
     markings: [GEO]
-  - name: transports
-    direction: in
-    to: [Shipment]
-    cardinality: "N:1"
-    markings: [INTERNAL]
   - name: connects
     direction: out
     to: [PumpStation, Field, Tank, Substation, GridArea]

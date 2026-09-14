@@ -34,7 +34,7 @@ properties:
 links: 
   - name: detected_on
     direction: out
-    to: [Sensor, Equipment, PumpStation]
+    to: [Sensor, Equipment, PumpStation, Substation]
     cardinality: "N:1"
     markings: [INTERNAL]
 actions: []

@@ -4,7 +4,7 @@ import { useStore, SCREENS, type ScreenKey, type Tab } from './store'
 import { SCREEN_ICONS, TYPE_ICONS } from '../components/icons'
 import { Kbd, Toasts } from '../components/ui'
 import { LogoMark } from '../components/Logo'
-import { quickSearch, world, subscribeEvents, get as getObject, logRead } from '../data/api'
+import { quickSearch, world, subscribeEvents, get as getObject, logRead, switchDomain } from '../data/api'
 import { TYPES } from '../data/ontology'
 import { PURPOSE_LABELS, effectiveLevel } from '../data/security'
 import { fmtTime } from '../data/rng'
@@ -114,7 +114,7 @@ function TopBar() {
   const tab = tabs.find(t => t.id === activeTab)
   const obj = tab?.objectId ? getObject(tab.objectId) : undefined
   const title = obj ? obj.label : tab?.title || ''
-  const sub = obj ? TYPES[obj.type].label : tab?.kind === 'screen' ? 'Северная нефть' : ''
+  const sub = obj ? TYPES[obj.type].label : tab?.kind === 'screen' ? world().domain.holding : ''
   return (
     <header className="topbar">
       <div className="tb-title"><span className="tb-h">{title}</span>{sub && <span className="tb-sub">{sub}</span>}</div>
@@ -191,7 +191,8 @@ function CommandPalette() {
         { label: settings.theme === 'dark' ? 'Светлая тема' : 'Тёмная тема', run: () => setSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' }) },
         { label: settings.presentation ? 'Выключить режим презентации' : 'Режим презентации (скрыть PII/FIN)', run: () => setSettings({ presentation: !settings.presentation }) },
         { label: 'Открыть видеостену /wall', run: () => { location.hash = '#/wall' } },
-        { label: 'Сценарий демо: НПС-2 → Насос-104 → ООО Вектор', run: () => { openObject(world().named.nps2, { tab: true }) } },
+        { label: `Сценарий демо: ${getObject(world().named.focusAsset)?.props.code} → ${getObject(world().named.focusEquipment)?.label} → ООО Вектор`, run: () => { openObject(world().named.focusAsset, { tab: true }) } },
+        { label: `Переключить домен: ${world().domain.key === 'energy' ? 'Нефтегаз' : 'Электросети'}`, run: () => switchDomain(world().domain.key === 'energy' ? 'oilgas' : 'energy') },
         { label: 'Выйти', run: () => { logout(); location.hash = '' } },
       ]
       for (const c of cmds) if (!ql || c.label.toLowerCase().includes(ql)) out.push({ group: 'Команды', label: c.label, run: c.run })

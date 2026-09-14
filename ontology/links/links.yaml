@@ -13,22 +13,22 @@ links:
     label: эксплуатирует
     inverse_label: эксплуатируется
     from: [Subsidiary]
-    to: [Field, Pipeline, PumpStation, Tank]
+    to: [Field, Pipeline, PumpStation, Tank, GridArea, PowerLine, Substation]
     cardinality: "1:N"
     source: Справочники
     markings: [INTERNAL]
   - name: located_on
     label: расположен на
     inverse_label: содержит
-    from: [Well, WellPad]
-    to: [WellPad, Field]
+    from: [Well, WellPad, Feeder, Substation, PipelineSegment, LineSegment]
+    to: [WellPad, Field, GridArea, Substation, Pipeline, PowerLine]
     cardinality: "N:1"
     source: Справочники
     markings: [GEO]
   - name: has_equipment
     label: имеет оборудование
     inverse_label: установлено на
-    from: [Well, PumpStation, Tank, PipelineSegment]
+    from: [Well, PumpStation, Tank, PipelineSegment, Substation, Feeder, LineSegment]
     to: [Equipment]
     cardinality: "1:N"
     source: SAP PM функциональные места
@@ -45,7 +45,7 @@ links:
     label: обнаружена на
     inverse_label: аномалии
     from: [Anomaly]
-    to: [Sensor, Equipment, PumpStation]
+    to: [Sensor, Equipment, PumpStation, Substation]
     cardinality: "N:1"
     source: ML-пайплайн
     markings: [INTERNAL]
@@ -133,7 +133,7 @@ links:
     label: произошёл на
     inverse_label: инциденты
     from: [Incident]
-    to: [Equipment, PipelineSegment, PumpStation]
+    to: [Equipment, PipelineSegment, PumpStation, Substation, LineSegment, Feeder]
     cardinality: "N:1"
     source: Журнал
     markings: [CONFIDENTIAL]
@@ -156,8 +156,16 @@ links:
   - name: connects
     label: соединяет
     inverse_label: соединён
-    from: [Pipeline]
-    to: [PumpStation, Field, Tank]
+    from: [Pipeline, PowerLine]
+    to: [PumpStation, Field, Tank, Substation, GridArea]
     cardinality: "N:M"
     source: Реестр ОПО
     markings: [GEO]
+  - name: feeds
+    label: питает
+    inverse_label: питается от
+    from: [Substation]
+    to: [Substation, Feeder, GridArea]
+    cardinality: "1:N"
+    source: Схема сети
+    markings: [INTERNAL]

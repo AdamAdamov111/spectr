@@ -1,14 +1,14 @@
-# ontology/objects/field.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
-object_type: Field
+# ontology/objects/gridarea.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: GridArea
 version: 1.0.0
-owner: team-geo
-description: Месторождение углеводородов
-primary_key: fld_id
-backing_dataset: gold.field
+owner: team-grid
+description: Район электрических сетей (РЭС) с потребителями и ТП
+primary_key: res_id
+backing_dataset: gold.grid_area
 provenance: row
 freshness_slo: 1d
-markings: [CONFIDENTIAL]
-sources: [rosnedra, manual]
+markings: [INTERNAL]
+sources: [manual, askue]
 properties: 
   - name: code
     label: Код
@@ -18,19 +18,18 @@ properties:
     label: Название
     type: string
     key: true
-  - name: license
-    label: Лицензионный участок
-    type: string
-    markings: [GEO]
-    key: true
-  - name: reserves_abc1
-    label: Запасы ABC1
+  - name: consumers
+    label: Потребителей
     type: number
-    unit: тыс. т
-    markings: [CONFIDENTIAL, GEO]
-    masking: null_for_unauthorized
+    key: true
+  - name: saidi
+    label: SAIDI
+    type: number
+    unit: мин
+    derived_by: functions.reliability_indices
+    key: true
   - name: operator
-    label: Оператор
+    label: Эксплуатирует
     type: string
     key: true
 links: 
@@ -49,4 +48,9 @@ links:
     to: [Pipeline, PowerLine]
     cardinality: "N:M"
     markings: [GEO]
+  - name: feeds
+    direction: in
+    to: [Substation]
+    cardinality: "1:N"
+    markings: [INTERNAL]
 actions: []

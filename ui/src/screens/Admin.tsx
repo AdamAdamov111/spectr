@@ -1,6 +1,7 @@
 // U14 Администрирование: реестр целей, симуляция «как видит пользователь X», журнал политик, chaos-переключатели стенда.
 import { useState } from 'react'
-import { world, audit, seedAudit } from '../data/api'
+import { world, audit, seedAudit, switchDomain } from '../data/api'
+import { DOMAINS } from '../data/domain'
 import { useStore } from '../app/store'
 import { USERS, PURPOSE_LABELS, PURPOSE_CATEGORIES, PURPOSE_BASIS, PURPOSE_EXPIRES, POLICY_LOG } from '../data/security'
 import { ONTOLOGY_VERSION, TYPES } from '../data/ontology'
@@ -37,6 +38,10 @@ export function AdminScreen() {
         </div>}
         {tab === 'stand' && <div className="grid-2" style={{ maxWidth: 900 }}>
           <Panel title="Синтетический холдинг"><table className="kv"><tbody>{Object.entries(w.stats).filter(([k]) => k !== 'genMs' && k !== 'links').map(([k, v]) => <tr key={k}><td className="dim">{TYPES[k as keyof typeof TYPES]?.plural || k}</td><td className="mono">{fmtNum(v)}</td></tr>)}<tr><td className="dim">связей</td><td className="mono">{fmtNum(w.stats.links)}</td></tr><tr><td className="dim">генерация</td><td className="mono">{w.stats.genMs} мс · масштаб {w.scale}</td></tr><tr><td className="dim">онтология</td><td className="mono">v{ONTOLOGY_VERSION}</td></tr><tr><td className="dim">аудит</td><td className="mono">{audit.events.length} событий · {audit.batches.length} корней</td></tr></tbody></table></Panel>
+          <Panel title="Отраслевой пакет онтологии"><div className="col" style={{ gap: 10, fontSize: 13 }}>
+            <div className="dim">Одно ядро — разные доменные онтологии. Переключение пересобирает синтетический холдинг и перезагружает стенд; все экраны работают без изменений кода.</div>
+            {Object.values(DOMAINS).map(d => <label key={d.key} className="check"><input type="radio" name="domain" checked={w.domain.key === d.key} onChange={() => switchDomain(d.key)} /> <b>{d.label}</b> · {d.holdingFull}</label>)}
+          </div></Panel>
           <Panel title="Стенд"><div className="col" style={{ gap: 6, fontSize: 12 }}><div>Все данные помечены маркировкой <b>SYNTHETIC</b>; ИНН валидны по контрольной сумме, но принадлежат вымышленным организациям.</div><div className="dim">Продовый стенд: docker-compose с MinIO, Nessie, Redpanda, Debezium, Trino, OpenSearch, ClickHouse, Qdrant, Keycloak, Temporal, Dagster, PDP (Cedar), llama.cpp (см. репозиторий, часть 7).</div><button className="btn btn-xs" onClick={() => seedAudit()}>Досеять аудит</button></div></Panel>
         </div>}
       </div>

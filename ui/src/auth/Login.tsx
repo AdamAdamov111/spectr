@@ -6,6 +6,7 @@ import type { Session } from '../data/types'
 import { audit, seedAudit, world } from '../data/api'
 import { reducedMotion } from '../app/store'
 import { ONTOLOGY_VERSION } from '../data/ontology'
+import { currentDomain } from '../data/domain'
 
 type Phase = 'login' | 'checking' | 'stamp' | 'purpose' | 'leaving' | 'locked'
 const STEPS = ['Подпись токена', 'Политики доступа', 'Цели обработки', 'Допуск']
@@ -68,7 +69,7 @@ export function Login({ onDone }: { onDone: (s: Session) => void }) {
   return (
     <div className="login">
       <div className="lg-frame" aria-hidden />
-      <div className="lg-corner tl">SPECTR · <b>Trusted data platform</b><br />Северная нефть · изолированный контур</div>
+      <div className="lg-corner tl">SPECTR · <b>Trusted data platform</b><br />{currentDomain().holding} · {currentDomain().label}</div>
       <div className="lg-corner tr"><b>{hh}:{mm}:{ss}</b> MSK<br />ontology {ONTOLOGY_VERSION}</div>
       <div className="lg-corner bl">Все данные синтетические · <b>SYNTHETIC</b></div>
       <div className="lg-corner br">Пароль операторов стенда<br /><b>{DEMO_KEY}</b></div>

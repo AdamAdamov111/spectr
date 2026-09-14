@@ -1,6 +1,7 @@
 // In-browser Object API (spec part 9). Every read passes the PEP: _mk filter before scoring and counting.
 
 import { generateWorld, simNow, type World } from './generator'
+import { currentDomainKey, setDomainKey, type DomainKey } from './domain'
 import { TYPES, LINK_BY_TYPE, ACTION_BY_NAME, type ObjectType, type LinkType, type Marking } from './ontology'
 import type { SpObject, SpLink, Session, HistoryEntry, FreshnessInfo, EventItem } from './types'
 import { canSee, canSeeLink, decide, viewProps, canExecute, nextDecisionId, effectiveCategories } from './security'
@@ -14,11 +15,12 @@ export function world(): World {
     const mem = (navigator as unknown as { deviceMemory?: number }).deviceMemory
     const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)
     const small = (mem != null && mem < 4) || mobile
-    _world = generateWorld(2026, small ? 0.3 : 1)
+    _world = generateWorld(2026, small ? 0.3 : 1, currentDomainKey())
     if (import.meta.env.DEV) (window as unknown as { __spectr?: unknown }).__spectr = { world: _world, audit }
   }
   return _world
 }
+export function switchDomain(k: DomainKey) { setDomainKey(k); location.hash = '#/s/situation'; location.reload() }
 export const get = (id: string): SpObject | undefined => world().objects.get(id)
 export const must = (id: string): SpObject => { const o = world().objects.get(id); if (!o) throw new Error('no object ' + id); return o }
 
@@ -28,7 +30,7 @@ export const audit = new AuditLog()
 export interface SearchFilters { type?: ObjectType | 'all'; subsidiary?: string; marking?: Marking; status?: string; freshness?: 'ok' | 'warn' | 'stale'; onlyDerivedRisk?: boolean }
 export interface SearchResult { items: SpObject[]; total: number; hiddenByPolicy: number; facets: { types: [ObjectType, number][]; subsidiaries: [string, number][]; markings: [Marking, number][]; statuses: [string, number][] }; tookMs: number }
 
-const TYPE_PREFIX: Record<string, ObjectType> = { eq: 'Equipment', org: 'Organization', inn: 'Organization', well: 'Well', nps: 'PumpStation', doc: 'Document', ctr: 'Contract', prc: 'Procurement', mo: 'MaintenanceOrder', per: 'Person', inc: 'Incident', sen: 'Sensor', tank: 'Tank', emp: 'Employee' }
+const TYPE_PREFIX: Record<string, ObjectType> = { eq: 'Equipment', org: 'Organization', inn: 'Organization', well: 'Well', nps: 'PumpStation', doc: 'Document', ctr: 'Contract', prc: 'Procurement', mo: 'MaintenanceOrder', per: 'Person', inc: 'Incident', sen: 'Sensor', tank: 'Tank', emp: 'Employee', ps: 'Substation', fdr: 'Feeder', vl: 'PowerLine' }
 
 function textOf(o: SpObject): string {
   const p = o.props
@@ -206,16 +208,17 @@ export function explain(session: Session, o: SpObject, prop: string): { root: Ex
   const fn = (name: string, children: ExplainNode[], extra: Record<string, string> = {}): ExplainNode => ({ id: nid(), kind: 'function', level: 0, title: name, subtitle: 'детерминированная функция', details: { кэш: `hit (hash входов ${shortHash(r, 8)})`, ...extra }, children })
 
   let root: ExplainNode
-  if (o.id === n.nps2 && prop === 'pressure_anomaly_score') {
-    root = { id: nid(), kind: 'value', level: 0, title: `pressure_anomaly_score = 0.87`, subtitle: 'НПС-2 · окно 15 мин', details: { маркировки: 'CONFIDENTIAL, PROD', версия: String(o.version) }, children: [
+  if (o.id === n.focusAsset && prop === w.domain.focusProp) {
+    const sens = must(n.focusSensor); const unit = String(sens.props.unit); const val = sens.props.last_value; const code = String(o.props.code)
+    root = { id: nid(), kind: 'value', level: 0, title: `${prop} = 0.87`, subtitle: `${code} · окно 15 мин`, details: { маркировки: 'CONFIDENTIAL, PROD', версия: String(o.version) }, children: [
       pipeline('anomaly_v3', [
         dataset('enrich.anomaly_window', '1 (агрегат окна)', [
-          dataset('clean.scada_telemetry', '180 (окно 15 мин, датчик P-104)', [
-            raw('opcua → raw.scada.telemetry', 88412, 'raw/scada/telemetry_2026-09-14.parquet', { датчик: 'P-104', значение: '6.92 МПа', качество: 'good' }),
-            raw('opcua → raw.scada.telemetry', 88231, 'raw/scada/telemetry_2026-09-14.parquet', { датчик: 'P-104', значение: '5.31 МПа' }),
+          dataset('clean.scada_telemetry', `180 (окно 15 мин, датчик ${sens.label})`, [
+            raw('opcua → raw.scada.telemetry', 88412, 'raw/scada/telemetry_2026-09-14.parquet', { датчик: sens.label, значение: `${val} ${unit}`, качество: 'good' }),
+            raw('opcua → raw.scada.telemetry', 88231, 'raw/scada/telemetry_2026-09-14.parquet', { датчик: sens.label, значение: `${(Number(val) * 0.77).toFixed(2)} ${unit}` }),
           ], { provenance: 'Roaring bitmap 180 rid', _mk: 'CONFIDENTIAL|PROD' }),
         ], { трансформация: 'window_agg(15m)' }),
-        dataset('gold.pump_station', '2', [raw('sap_pm → raw.sap.iflot', 12, 'raw/sap/IFLOT_2026-09-14T03-00.csv', { tplnr: 'НПС-2', 'функц. место': 'СН-ТР/НПС-2' })]),
+        dataset(def.backing, '2', [raw('sap_pm → raw.sap.iflot', 12, 'raw/sap/IFLOT_2026-09-14T03-00.csv', { tplnr: code, 'функц. место': `${o.subsidiary ? get(o.subsidiary)?.label : ''}/${code}` })]),
       ], { commit: 'a1b2c3f', модель: 'isolation forest + CUSUM', параметры: 'window=15m, contamination=0.02', 'anomaly_v3': 'v3.2.1' }, ['- window = 10m', '+ window = 15m', '  contamination = 0.02', '+ cusum_threshold = 4.5']),
     ] }
   } else if (o.type === 'Equipment' && prop === 'health_index') {
@@ -432,7 +435,7 @@ export async function seedAudit() {
   const w = world(); const n = w.named; const r = new Rng(77)
   const actors = ['sc_head', 'toir_eng', 'seb_analyst', 'analyst_open', 'svc:materializer', 'svc:agent-runtime', 'k.semion']
   const purposesOf: Record<string, string> = { sc_head: 'situation_monitoring', toir_eng: 'toir_planning', seb_analyst: 'procurement_check', analyst_open: 'toir_planning', 'svc:materializer': 'system', 'svc:agent-runtime': 'procurement_check', 'k.semion': 'finance_control' }
-  const objs = [n.vektor, n.strela, n.nps2, n.pump104, n.contractVektor, n.ivanov, ...n.sharedProcs.slice(0, 2)]
+  const objs = [n.focusOrg, n.focusOrg2, n.focusAsset, n.focusEquipment, n.focusContract, n.focusPerson, ...n.sharedProcs.slice(0, 2)]
   const start = Date.now() - 7 * DAY
   const items: { ts: number; actor: string; action: string; ids: string[]; outcome: 'allow' | 'deny'; detail?: string }[] = []
   for (let i = 0; i < 140; i++) {
@@ -443,10 +446,10 @@ export async function seedAudit() {
     items.push({ ts, actor, action, ids: [oid], outcome: deny ? 'deny' : 'allow', detail: deny ? 'marking FIN not in clearance' : action === 'export' ? 'xlsx, 240 строк, водяной знак' : undefined })
   }
   items.push({ ts: Date.now() - 2 * DAY, actor: 'p.orlov', action: 'policy.change', ids: ['abac_fin_v12'], outcome: 'allow', detail: 'подпись ok, тесты 30/30' })
-  items.push({ ts: Date.now() - 3 * HOUR, actor: 'seb_analyst', action: 'read', ids: [n.vektor], outcome: 'allow' })
-  items.push({ ts: Date.now() - 55 * MIN, actor: 'analyst_open', action: 'read', ids: [n.vektor], outcome: 'deny', detail: 'marking FIN not in clearance (свойство contracts_total замаскировано)' })
-  items.push({ ts: Date.now() - 40 * MIN, actor: 'svc:agent-runtime', action: 'agent.tool:traverse', ids: [n.vektor, n.strela], outcome: 'allow', detail: 'delegated token seb_analyst, ttl 300s' })
-  items.push({ ts: Date.now() - 12 * MIN, actor: 'sc_head', action: 'explain', ids: [n.nps2], outcome: 'allow', detail: 'pressure_anomaly_score' })
+  items.push({ ts: Date.now() - 3 * HOUR, actor: 'seb_analyst', action: 'read', ids: [n.focusOrg], outcome: 'allow' })
+  items.push({ ts: Date.now() - 55 * MIN, actor: 'analyst_open', action: 'read', ids: [n.focusOrg], outcome: 'deny', detail: 'marking FIN not in clearance (свойство contracts_total замаскировано)' })
+  items.push({ ts: Date.now() - 40 * MIN, actor: 'svc:agent-runtime', action: 'agent.tool:traverse', ids: [n.focusOrg, n.focusOrg2], outcome: 'allow', detail: 'delegated token seb_analyst, ttl 300s' })
+  items.push({ ts: Date.now() - 12 * MIN, actor: 'sc_head', action: 'explain', ids: [n.focusAsset], outcome: 'allow', detail: w.domain.focusProp })
   items.sort((a, b) => a.ts - b.ts)
   for (const it of items) {
     const o = get(it.ids[0])
@@ -480,12 +483,12 @@ export function askAgent(session: Session, question: string): AgentReply {
   const cats = effectiveCategories(session)
   const finHidden = !cats.has('FIN')
   const money = (v: number) => finHidden ? '[сумма замаскирована: FIN]' : fmtMoney(v)
-  const nps2 = must(n.nps2); const vektor = must(n.vektor); const strela = must(n.strela)
+  const focus = must(n.focusAsset); const vektor = must(n.focusOrg); const strela = must(n.focusOrg2); const code = String(focus.props.code)
 
-  if ((q.includes('нпс-2') || q.includes('нпс 2')) && q.includes('вектор')) {
-    t('search_objects', { type: 'PumpStation', filter: { prop: 'code', op: 'eq', value: 'НПС-2' } }, `1 объект: ${nps2.id}`, 1)
-    const eqs = traverse(session, [nps2.id], 1, { types: ['has_equipment'], maxPerNode: 400 }).nodes.filter(x => x.type === 'Equipment')
-    t('traverse', { id: nps2.id, link_type: 'has_equipment', depth: 1 }, `${eqs.length} единиц оборудования`, eqs.length)
+  if (w.domain.scenarioKeywords.some(k => q.includes(k)) && q.includes('вектор')) {
+    t('search_objects', { type: focus.type, filter: { prop: 'code', op: 'eq', value: code } }, `1 объект: ${focus.id}`, 1)
+    const eqs = traverse(session, [focus.id], 1, { types: ['has_equipment'], maxPerNode: 400 }).nodes.filter(x => x.type === 'Equipment')
+    t('traverse', { id: focus.id, link_type: 'has_equipment', depth: 1 }, `${eqs.length} единиц оборудования`, eqs.length)
     const orders = new Map<string, SpObject>()
     for (const e of eqs) for (const nb of neighbors(session, e.id, { types: ['maintains'] })) orders.set(nb.other.id, nb.other)
     t('traverse', { ids: `${eqs.length} Equipment`, link_type: 'maintains', depth: 1 }, `${orders.size} заявок ТОиР`, orders.size)
@@ -493,14 +496,14 @@ export function askAgent(session: Session, question: string): AgentReply {
     for (const o of orders.values()) { const p = neighbors(session, o.id, { types: ['performed_by'] }).find(x => x.other.type === 'Organization'); if (!p) continue; const c = contractors.get(p.other.id) || { org: p.other, overdue: 0, total: 0 }; c.total++; if (o.props.status === 'просрочена' || (o.props.status !== 'закрыта' && new Date(o.props.planned as string).getTime() < simNow() - 90 * DAY)) c.overdue++; contractors.set(p.other.id, c) }
     t('call_function', { name: 'contract_execution_status', args: { orgs: contractors.size, period: '2026-Q3' } }, `${contractors.size} подрядчиков, ${[...contractors.values()].filter(c => c.overdue > 0).length} со срывами`)
     const affiliated = new Set([vektor.id])
-    for (const nb of neighbors(session, n.ivanov, { types: ['founder_of', 'director_of'], includeHidden: true })) affiliated.add(nb.other.id)
+    for (const nb of neighbors(session, n.focusPerson, { types: ['founder_of', 'director_of'], includeHidden: true })) affiliated.add(nb.other.id)
     t('traverse', { id: vektor.id, link_type: 'founder_of', depth: 2 }, `связанные через учредителей: ${[...affiliated].map(id => get(id)?.label).join(', ')}`, affiliated.size)
     const related = [...contractors.values()].filter(c => affiliated.has(c.org.id))
-    const vc = must(n.contractVektor)
-    chips.push(vektor.id, strela.id, n.ivanov, vc.id)
-    const lines = [`По НПС-2 за квартал работы вели **${contractors.size} подрядчиков**. Из них связаны с ООО «Вектор» через общего учредителя (Иванов И.И.) и одновременно сорвали сроки:`]
+    const vc = must(n.focusContract); const strelaContract = neighbors(session, strela.id, { types: ['party_to'] }).map(x => x.other).find(c => (c.props.overdue_days as number) > 0)
+    chips.push(vektor.id, strela.id, n.focusPerson, vc.id)
+    const lines = [`По ${code} за квартал работы вели **${contractors.size} подрядчиков**. Из них связаны с ООО «Вектор» через общего учредителя (Иванов И.И.) и одновременно сорвали сроки:`]
     lines.push(`1. **ООО «Вектор»** [[${vektor.id}]] — ${related.find(c => c.org.id === vektor.id)?.overdue ?? 3} просроченных заявки, договор ${vc.props.number} [[${vc.id}]] на ${money(vc.props.amount as number)} просрочен на ${vc.props.overdue_days} дн.`)
-    lines.push(`2. **ООО «Стрела»** [[${strela.id}]] — общий учредитель Иванов И.И. [[${n.ivanov}]], договор на ремонт резервуаров просрочен на 41 дн.; участвовала в тех же 6 закупках, что и «Вектор» (cartel_pattern до 0.77).`)
+    lines.push(`2. **ООО «Стрела»** [[${strela.id}]] — общий учредитель Иванов И.И. [[${n.focusPerson}]], договор «${strelaContract ? strelaContract.props.subject : 'ремонт'}» просрочен на ${strelaContract ? strelaContract.props.overdue_days : 41} дн.; участвовала в тех же 6 закупках, что и «Вектор» (cartel_pattern до 0.77).`)
     if (finHidden) lines.push(`Суммы договоров скрыты: под целью ${session.purpose} маркировка FIN недоступна.`)
     lines.push(`Рекомендация: рассмотреть действие «Поставить контрагента на контроль» для ООО «Вектор».`)
     return { steps, text: lines.join('\n'), chips, proposed: [{ action: 'flag_counterparty', objectId: vektor.id, params: { reason: 'Аффилированность с участниками закупок', until: '2026-12-31' } }], partialHidden: finHidden }
@@ -533,11 +536,12 @@ export function askAgent(session: Session, question: string): AgentReply {
   return { steps, text: `По запросу объектов не найдено. Я отвечаю только по объектам онтологии с ссылками на идентификаторы; ответ без ссылок был бы «мнением модели» и не может стать входом действия. Попробуйте: «справка по ООО Вектор», «какое оборудование откажет первым», «какие подрядчики НПС-2 связаны с ООО Вектор и сорвали сроки за квартал».`, chips, partialHidden: false, unverified: ['ответ без ссылок на объекты'] }
 }
 
-// ---------- KPI for situation center ----------
+// ---------- KPI for situation center (domain pack decides the first two cards) ----------
+export interface KpiCard { key: string; label: string; value: number; decimals?: number; unit?: string; sub: string; tone?: 'danger' | 'warn' | 'ok' | 'accent'; delta?: number; deltaAbs?: boolean; target?: { screen?: string; object?: string } }
 export function kpis(session: Session) {
-  const w = world()
-  const wells = w.byType.get('Well') || []
-  const debit = wells.reduce((a, x) => a + (x.props.debit as number), 0)
+  const w = world(); const d = w.domain; const n = w.named
+  const units = w.byType.get(d.unitType) || []
+  const inWork = units.filter(x => x.props.status === 'в работе' || x.props.status === 'под нагрузкой').length
   const openOrders = (w.byType.get('MaintenanceOrder') || []).filter(o => o.props.status !== 'закрыта').length
   const incidents = (w.byType.get('Incident') || []).filter(o => o.props.status !== 'закрыт').length
   const anomalies = (w.byType.get('Anomaly') || []).filter(a => (a.props.score as number) > 0.6).length
@@ -546,20 +550,37 @@ export function kpis(session: Session) {
   const fresh = typeFreshness()
   const stale = fresh.filter(f => f.status !== 'ok').length
   const cartel = (w.byType.get('Procurement') || []).filter(p => (p.props.cartel_pattern as number) > 0.5).length
+  const code = String(must(n.focusAsset).props.code)
+  const cards: KpiCard[] = []
+  if (d.key === 'energy') {
+    const hubs = (w.byType.get('Substation') || []).filter(x => x.props.voltage_kv === 220)
+    const load = hubs.reduce((a, x) => a + (x.props.load_mw as number), 0)
+    cards.push({ key: 'load', label: 'Нагрузка сети', value: load, unit: 'МВт', decimals: 1, sub: `${inWork} из ${units.length} ${d.unitLabelInWork}`, delta: 3.4, target: { screen: 'search' } })
+    cards.push({ key: 'flow', label: 'Переток по ВЛ', value: flow, unit: 'МВт', sub: 'суммарно по магистральным ВЛ', tone: 'accent', delta: 1.2, target: { object: n.focusAsset } })
+  } else {
+    const debit = units.reduce((a, x) => a + ((x.props.debit as number) || 0), 0)
+    cards.push({ key: 'debit', label: 'Добыча', value: debit, unit: 'т/сут', sub: `${inWork} из ${units.length} ${d.unitLabelInWork}`, delta: -1.8, target: { screen: 'search' } })
+    cards.push({ key: 'flow', label: 'Транспорт', value: flow, unit: 'м³/ч', sub: 'суммарный расход МН', tone: 'accent', delta: 0.6, target: { object: n.focusAsset } })
+  }
+  cards.push({ key: 'inc', label: d.incidentsKpi, value: incidents, sub: `открытых, 2 на ${code}`, tone: incidents ? 'danger' : 'ok', delta: 1, deltaAbs: true, target: { object: n.focusIncidents[0] } })
+  cards.push({ key: 'anom', label: 'Аномалии', value: anomalies, sub: 'score > 0.6 за 30 дн', tone: 'warn', delta: 3, deltaAbs: true, target: { object: n.focusAnomaly } })
+  cards.push({ key: 'toir', label: 'ТОиР: открыто', value: openOrders, sub: `${critical} ед. с индексом < 0.4`, delta: -2.4, target: { screen: 'toir' } })
+  cards.push({ key: 'cartel', label: 'Закупки: риск', value: cartel, sub: 'cartel_pattern > 0.5', tone: 'warn', delta: 2, deltaAbs: true, target: { screen: 'procurement' } })
   void session
-  return { debit, openOrders, incidents, anomalies, flow, critical, stale, cartel, wells: wells.filter(x => x.props.status === 'в работе').length, wellsTotal: wells.length, fresh }
+  return { cards, fresh, stale, inWork, unitsTotal: units.length, incidents, anomalies, openOrders, flow }
 }
 
 // ---------- live simulation ----------
 export function tick() {
-  const w = world(); const now = simNow()
+  const w = world(); const now = simNow(); const d = w.domain
   const sensors = w.byType.get('Sensor') || []
   const r = new Rng(Math.floor(now / 1000))
   for (let i = 0; i < 40; i++) { const s = r.pick(sensors); s.materializedAt = now - r.int(0, 4) * 1000; s.props.last_value = +((s.props.last_value as number) * (1 + r.gauss(0, 0.004))).toFixed(2); s.version++ }
-  const nps2 = must(w.named.nps2); nps2.materializedAt = now - r.int(2, 9) * 1000; nps2.props.pressure_out = +(6.92 + r.gauss(0, 0.02)).toFixed(2)
-  const nps1 = must(w.named.nps1); nps1.materializedAt = now - r.int(2, 12) * 1000
-  for (const t of w.byType.get('Tank') || []) if (r.chance(0.3)) { t.materializedAt = now - r.int(1, 30) * 1000; t.props.level = +Math.max(5, Math.min(95, (t.props.level as number) + r.gauss(0, 0.05))).toFixed(1) }
-  const p104 = must(w.named.sensorP104); p104.props.last_value = +(6.9 + r.gauss(0, 0.03)).toFixed(2); p104.materializedAt = now - 2000
+  const focus = must(w.named.focusAsset); focus.materializedAt = now - r.int(2, 9) * 1000
+  if (d.key === 'energy') focus.props.load_mw = +(318.4 + r.gauss(0, 0.8)).toFixed(1); else focus.props.pressure_out = +(6.92 + r.gauss(0, 0.02)).toFixed(2)
+  const second = must(w.named.secondAsset); second.materializedAt = now - r.int(2, 12) * 1000
+  for (const t of w.byType.get(d.distType) || []) if (t.id !== focus.id && t.id !== second.id && r.chance(0.3)) { t.materializedAt = now - r.int(1, 30) * 1000; const k = d.key === 'energy' ? 'load_pct' : 'level'; t.props[k] = +Math.max(5, Math.min(95, (t.props[k] as number) + r.gauss(0, 0.05))).toFixed(1) }
+  const fs = must(w.named.focusSensor); fs.props.last_value = +((d.key === 'energy' ? 84.2 : 6.9) + r.gauss(0, d.key === 'energy' ? 0.3 : 0.03)).toFixed(2); fs.materializedAt = now - 2000
   if (r.chance(0.18)) { const o = r.pick(w.byType.get('MaintenanceOrder') || []); o.materializedAt = now - 3000; addEvent({ kind: 'order', text: `Заявка ${o.props.number} обновлена: ${o.props.status} (${o.props.source_system})`, objectId: o.id }) }
   else if (r.chance(0.08)) addEvent({ kind: 'freshness', text: `Materializer: object.changes лаг ${r.int(2, 11)} с, ${r.int(120, 900)} объектов/с` })
   else if (r.chance(0.05)) { const s = r.pick(sensors); addEvent({ kind: 'anomaly', text: `Аномалия ${s.label}: score ${r.float(0.55, 0.8).toFixed(2)} (anomaly_v3)`, objectId: s.id }) }

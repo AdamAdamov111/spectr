@@ -15,7 +15,7 @@ export function GraphScreen() {
   const theme = useStore(s => s.settings.theme)
   const insId = useStore(s => s.inspector.objectId)
   const w = world()
-  const [roots, setRoots] = useState<string[]>(() => [insId && getObject(insId)?.type !== 'Purpose' ? insId : w.named.vektor])
+  const [roots, setRoots] = useState<string[]>(() => [insId && getObject(insId)?.type !== 'Purpose' ? insId : w.named.focusOrg])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [types, setTypes] = useState<Set<LinkType>>(new Set(LINKS.map(l => l.type).filter(t => t !== 'accessed_under')))
   const [minConf, setMinConf] = useState(0.5)

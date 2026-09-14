@@ -49,7 +49,7 @@ properties:
 links: 
   - name: located_on
     direction: out
-    to: [WellPad, Field]
+    to: [WellPad, Field, GridArea, Substation, Pipeline, PowerLine]
     cardinality: "N:1"
     markings: [GEO]
   - name: has_equipment

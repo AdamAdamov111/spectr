@@ -83,7 +83,7 @@ export function MapCanvas(p: Props) {
       // pipelines
       if (pr.layers.pipelines) pr.pipelines.forEach((pl, pi) => {
         const pts = pl.points.map(q => toScreen(q[0], q[1]))
-        const pressureColor = pl.pressure > 6.5 ? '#ec9a3c' : '#8abbff'
+        const pressureColor = pl.hot ? '#ec9a3c' : '#8abbff'
         ctx.lineJoin = 'round'; ctx.lineCap = 'round'
         ctx.strokeStyle = light ? 'rgba(45,114,210,0.14)' : 'rgba(76,144,240,0.1)'; ctx.lineWidth = Math.max(6, (pl.flow / 900) * z * 5); ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke()
         ctx.strokeStyle = light ? 'rgba(45,114,210,0.6)' : 'rgba(138,187,255,0.42)'; ctx.lineWidth = Math.max(1.8, (pl.flow / 900) * z * 1.8); ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke()
@@ -98,7 +98,7 @@ export function MapCanvas(p: Props) {
             ctx.fillStyle = pressureColor; ctx.shadowColor = pressureColor; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(x, y, Math.max(1.2, 1.8 * z), 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0
           }
         }
-        if (z > 0.9) { const mid = pts[Math.floor(pts.length / 2)]; ctx.fillStyle = light ? '#215db0' : 'rgba(138,187,255,0.8)'; ctx.font = `${pr.wall ? 14 : 11}px "JetBrains Mono Variable", monospace`; ctx.fillText(`${pl.code.split(' ')[0]} · ${pl.flow} м³/ч`, mid[0] + 6, mid[1] - 6) }
+        if (z > 0.9) { const mid = pts[Math.floor(pts.length / 2)]; ctx.fillStyle = light ? '#215db0' : 'rgba(138,187,255,0.8)'; ctx.font = `${pr.wall ? 14 : 11}px "JetBrains Mono Variable", monospace`; ctx.fillText(`${pl.code.split(' «')[0]} · ${pl.flow} ${pl.unit}`, mid[0] + 6, mid[1] - 6) }
       })
       // markers
       const hov = hoverRef.current

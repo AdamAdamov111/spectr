@@ -1,0 +1,68 @@
+# ontology/objects/feeder.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Feeder
+version: 1.1.0
+owner: team-grid
+description: Фидер 10 кВ от ТП до потребителей
+primary_key: fdr_id
+backing_dataset: gold.feeder
+provenance: row
+freshness_slo: 15m
+markings: [CONFIDENTIAL, PROD]
+sources: [askue, scada, sap_pm]
+properties: 
+  - name: number
+    label: Номер
+    type: string
+    sources: [askue.feeders.no]
+    key: true
+  - name: kind
+    label: Тип
+    type: enum
+    key: true
+  - name: status
+    label: Статус
+    type: enum
+    sources: [scada.feeder.status]
+    key: true
+  - name: load_a
+    label: Ток нагрузки
+    type: number
+    unit: А
+    markings: [PROD]
+    sources: [askue.feeders.i]
+    key: true
+    live: true
+  - name: consumers
+    label: Потребителей
+    type: number
+    key: true
+  - name: commissioned
+    label: Дата ввода
+    type: date
+  - name: trend_30d
+    label: Тренд нагрузки 30 дн
+    type: percent
+    unit: %
+    derived_by: functions.load_trend
+links: 
+  - name: located_on
+    direction: out
+    to: [WellPad, Field, GridArea, Substation, Pipeline, PowerLine]
+    cardinality: "N:1"
+    markings: [GEO]
+  - name: has_equipment
+    direction: out
+    to: [Equipment]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: occurred_at
+    direction: in
+    to: [Incident]
+    cardinality: "N:1"
+    markings: [CONFIDENTIAL]
+  - name: feeds
+    direction: in
+    to: [Substation]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+actions: []

@@ -10,14 +10,8 @@ import { effectiveCategories, effectiveLevel, viewProps } from '../data/security
 import type { SpObject } from '../data/types'
 
 interface Saved { label: string; q: string; f: SearchFilters; pred?: (o: SpObject) => boolean }
-const SAVED: Saved[] = [
-  { label: 'Насосы с индексом < 0.5', q: 'eq: насос', f: { type: 'Equipment' }, pred: o => (o.props.health_index as number) < 0.5 },
-  { label: 'Контрагенты с риском > 0.6', q: '', f: { type: 'Organization' }, pred: o => (o.props.risk_score as number) > 0.6 },
-  { label: 'Просроченные договоры', q: '', f: { type: 'Contract', status: 'просрочен' } },
-  { label: 'Открытые заявки ТОиР', q: '', f: { type: 'MaintenanceOrder' }, pred: o => o.props.status !== 'закрыта' },
-  { label: 'Закупки с картельным паттерном', q: '', f: { type: 'Procurement' }, pred: o => (o.props.cartel_pattern as number) > 0.5 },
-  { label: 'Скважины с падением дебита', q: '', f: { type: 'Well' }, pred: o => (o.props.trend_30d as number) < -10 },
-]
+const PREDS: Record<string, (o: SpObject) => boolean> = { health: o => (o.props.health_index as number) < 0.5, risk: o => (o.props.risk_score as number) > 0.6, open: o => o.props.status !== 'закрыта', cartel: o => (o.props.cartel_pattern as number) > 0.5, trend: o => Math.abs(o.props.trend_30d as number) > 10 }
+const savedQueries = (): Saved[] => world().domain.savedQueries.map(q => ({ label: q.label, q: '', f: q.pred === 'overdue' ? { type: q.type, status: 'просрочен' } : { type: q.type }, pred: q.pred && q.pred !== 'overdue' ? PREDS[q.pred] : undefined }))
 
 let preset: SearchFilters | null = null
 export function setSearchPreset(f: SearchFilters) { preset = f }
@@ -59,7 +53,7 @@ export function SearchScreen() {
       </div>
       <div className="screen-b">
         <aside className="facets">
-          <div className="facet"><div className="facet-h">Сохранённые запросы</div>{SAVED.map(s => <button key={s.label} className="facet-item" onClick={() => { setQ(s.q); setF({ type: 'all', ...s.f }); setPred(() => s.pred || null) }}>{s.label}</button>)}</div>
+          <div className="facet"><div className="facet-h">Сохранённые запросы</div>{savedQueries().map(s => <button key={s.label} className="facet-item" onClick={() => { setQ(s.q); setF({ type: 'all', ...s.f }); setPred(() => s.pred || null) }}>{s.label}</button>)}</div>
           <div className="facet"><div className="facet-h">Тип объекта</div><button className={`facet-item ${!f.type || f.type === 'all' ? 'active' : ''}`} onClick={() => setF(x => ({ ...x, type: 'all' }))}>Все<span className="n">{res.total.toLocaleString('ru-RU')}</span></button>{res.facets.types.slice(0, 14).map(([t, n]) => <button key={t} className={`facet-item ${f.type === t ? 'active' : ''}`} onClick={() => facet('type', t)}><TypeIcon type={t} size={12} />{TYPES[t].plural}<span className="n">{n.toLocaleString('ru-RU')}</span></button>)}</div>
           <div className="facet"><div className="facet-h">ДЗО</div>{res.facets.subsidiaries.map(([id, n]) => <button key={id} className={`facet-item ${f.subsidiary === id ? 'active' : ''}`} onClick={() => facet('subsidiary', id)}>{getObject(id)?.label}<span className="n">{n.toLocaleString('ru-RU')}</span></button>)}</div>
           <div className="facet"><div className="facet-h">Маркировка</div>{([...LEVELS, 'FIN', 'PII', 'PROD', 'GEO', 'HR', 'LEGAL'] as Marking[]).map(m => { const n = res.facets.markings.find(x => x[0] === m)?.[1] || 0; const na = isLevel(m) ? LEVELS.indexOf(m) > LEVELS.indexOf(lvl) : !cats.has(m); return <button key={m} className={`facet-item ${f.marking === m ? 'active' : ''} ${na ? 'na' : ''}`} onClick={() => !na && facet('marking', m)} title={na ? 'недоступно под текущей целью' : ''}>{m}<span className="n">{na ? 'недоступно' : n.toLocaleString('ru-RU')}</span></button> })}</div>

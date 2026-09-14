@@ -13,11 +13,12 @@ export type ObjectType =
   | 'PumpStation' | 'Tank' | 'Equipment' | 'Sensor' | 'Anomaly' | 'MaintenanceOrder' | 'WorkPermit' | 'Incident'
   | 'Organization' | 'Person' | 'Employee' | 'Contract' | 'Procurement' | 'Bid' | 'Shipment' | 'Vehicle'
   | 'Document' | 'Mention' | 'Report' | 'Purpose'
+  | 'GridArea' | 'Substation' | 'PowerLine' | 'LineSegment' | 'Feeder'
 
 export type LinkType =
   | 'owns' | 'operates' | 'located_on' | 'has_equipment' | 'measured_by' | 'detected_on' | 'maintains' | 'performed_by'
   | 'under_contract' | 'party_to' | 'founder_of' | 'director_of' | 'participated_in' | 'awarded' | 'mentions'
-  | 'attached_to' | 'occurred_at' | 'transports' | 'accessed_under' | 'connects'
+  | 'attached_to' | 'occurred_at' | 'transports' | 'accessed_under' | 'connects' | 'feeds'
 
 export type PropType = 'string' | 'number' | 'money' | 'decimal' | 'enum' | 'date' | 'datetime' | 'bool' | 'geo' | 'text' | 'percent'
 
@@ -269,6 +270,46 @@ export const TYPES: Record<ObjectType, TypeDef> = {
     props: [ { name: 'span', label: 'Фрагмент', type: 'text', key: true }, { name: 'confidence', label: 'Confidence', type: 'decimal', key: true }, { name: 'model', label: 'Модель', type: 'string', key: true } ] }),
   Report: T({ type: 'Report', label: 'Отчёт регулятору', plural: 'Отчёты', prefix: 'rep', version: '1.0.0', owner: 'team-fin', description: 'Форма отчётности', backing: 'gold.report', provenance: 'row', sloSec: 86400, markings: ['INTERNAL'], sources: ['sed', 'gas_upravlenie'], icon: 'file-spreadsheet', color: '#abb3bf',
     props: [ { name: 'form', label: 'Форма', type: 'string', key: true }, { name: 'period', label: 'Период', type: 'string', key: true }, { name: 'status', label: 'Статус', type: 'enum', key: true } ] }),
+  GridArea: T({ type: 'GridArea', label: 'Район сетей', plural: 'Районы электрических сетей', prefix: 'res', version: '1.0.0', owner: 'team-grid', description: 'Район электрических сетей (РЭС) с потребителями и ТП', backing: 'gold.grid_area', provenance: 'row', sloSec: 86400, markings: ['INTERNAL'], sources: ['manual', 'askue'], icon: 'mountain', color: '#9d8be8',
+    props: [
+      { name: 'code', label: 'Код', type: 'string', key: true },
+      { name: 'name', label: 'Название', type: 'string', key: true },
+      { name: 'consumers', label: 'Потребителей', type: 'number', key: true },
+      { name: 'saidi', label: 'SAIDI', type: 'number', unit: 'мин', key: true, derived_by: 'functions.reliability_indices' },
+      { name: 'operator', label: 'Эксплуатирует', type: 'string', key: true },
+    ] }),
+  Substation: T({ type: 'Substation', label: 'Подстанция', plural: 'Подстанции', prefix: 'ps', version: '1.2.0', owner: 'team-grid', description: 'Электрическая подстанция 220 или 110 кВ', backing: 'gold.substation', provenance: 'full', sloSec: 30, markings: ['CONFIDENTIAL', 'PROD'], sources: ['scada', 'sap_pm'], icon: 'cog', color: '#4c90f0',
+    props: [
+      { name: 'code', label: 'Код', type: 'string', key: true, sources: ['sap_pm.iflot.tplnr'] },
+      { name: 'voltage_kv', label: 'Класс напряжения', type: 'number', unit: 'кВ', key: true },
+      { name: 'capacity_mva', label: 'Мощность', type: 'number', unit: 'МВА', key: true },
+      { name: 'load_mw', label: 'Нагрузка', type: 'number', unit: 'МВт', key: true, live: true, markings: ['PROD'], sources: ['scada.ps.p'] },
+      { name: 'load_pct', label: 'Загрузка', type: 'percent', unit: '%', live: true, markings: ['PROD'] },
+      { name: 'mode', label: 'Режим', type: 'enum', key: true, live: true, sources: ['scada.ps.mode'] },
+      { name: 'transformer_anomaly_score', label: 'Аномалия трансформатора', type: 'decimal', key: true, live: true, derived_by: 'pipelines.anomaly_v3' },
+      { name: 'open_incidents', label: 'Открытых нарушений', type: 'number', key: true },
+    ] }),
+  PowerLine: T({ type: 'PowerLine', label: 'Линия электропередачи', plural: 'ЛЭП', prefix: 'vl', version: '1.0.0', owner: 'team-grid', description: 'Воздушная или кабельная линия 220/110 кВ', backing: 'gold.power_line', provenance: 'row', sloSec: 86400, markings: ['CONFIDENTIAL'], sources: ['opo_registry', 'sap_pm'], icon: 'route', color: '#8abbff',
+    props: [
+      { name: 'code', label: 'Код', type: 'string', key: true },
+      { name: 'voltage_kv', label: 'Напряжение', type: 'number', unit: 'кВ', key: true },
+      { name: 'length', label: 'Протяжённость', type: 'number', unit: 'км', key: true, markings: ['GEO'] },
+      { name: 'load_mw', label: 'Переток', type: 'number', unit: 'МВт', live: true, markings: ['PROD'] },
+      { name: 'load_pct', label: 'Загрузка', type: 'percent', unit: '%', live: true },
+      { name: 'commissioned', label: 'Год ввода', type: 'number' },
+    ] }),
+  LineSegment: T({ type: 'LineSegment', label: 'Участок ЛЭП', plural: 'Участки ЛЭП', prefix: 'seg', version: '1.0.0', owner: 'team-grid', description: 'Участок линии между опорами', backing: 'gold.line_segment', provenance: 'row', sloSec: 86400, markings: ['CONFIDENTIAL'], sources: ['vtd', 'sap_pm'], icon: 'minus', color: '#8abbff',
+    props: [ { name: 'km_from', label: 'Км начала', type: 'number', key: true }, { name: 'km_to', label: 'Км конца', type: 'number', key: true }, { name: 'towers', label: 'Опор', type: 'number', key: true }, { name: 'defects', label: 'Дефекты обследования', type: 'number', key: true } ] }),
+  Feeder: T({ type: 'Feeder', label: 'Фидер', plural: 'Фидеры', prefix: 'fdr', version: '1.1.0', owner: 'team-grid', description: 'Фидер 10 кВ от ТП до потребителей', backing: 'gold.feeder', provenance: 'row', sloSec: 900, markings: ['CONFIDENTIAL', 'PROD'], sources: ['askue', 'scada', 'sap_pm'], icon: 'drill', color: '#9d8be8',
+    props: [
+      { name: 'number', label: 'Номер', type: 'string', key: true, sources: ['askue.feeders.no'] },
+      { name: 'kind', label: 'Тип', type: 'enum', key: true },
+      { name: 'status', label: 'Статус', type: 'enum', key: true, sources: ['scada.feeder.status'] },
+      { name: 'load_a', label: 'Ток нагрузки', type: 'number', unit: 'А', key: true, live: true, markings: ['PROD'], sources: ['askue.feeders.i'] },
+      { name: 'consumers', label: 'Потребителей', type: 'number', key: true },
+      { name: 'commissioned', label: 'Дата ввода', type: 'date' },
+      { name: 'trend_30d', label: 'Тренд нагрузки 30 дн', type: 'percent', unit: '%', derived_by: 'functions.load_trend' },
+    ] }),
   Purpose: T({ type: 'Purpose', label: 'Цель доступа', plural: 'Цели доступа', prefix: 'pur', version: '1.0.0', owner: 'team-security', description: 'Цель обработки данных (PBAC)', backing: 'gold.purpose', provenance: 'row', sloSec: 0, markings: ['INTERNAL'], sources: ['pbac_registry'], icon: 'target', color: '#4c90f0',
     props: [
       { name: 'name', label: 'Название', type: 'string', key: true },
@@ -282,11 +323,11 @@ export const TYPES: Record<ObjectType, TypeDef> = {
 
 export const LINKS: LinkDef[] = [
   { type: 'owns', label: 'владеет', inverseLabel: 'принадлежит', from: ['Holding'], to: ['Subsidiary'], cardinality: '1:N', source: 'ЕГРЮЛ (доля > 50%)', markings: ['INTERNAL'] },
-  { type: 'operates', label: 'эксплуатирует', inverseLabel: 'эксплуатируется', from: ['Subsidiary'], to: ['Field', 'Pipeline', 'PumpStation', 'Tank'], cardinality: '1:N', source: 'Справочники', markings: ['INTERNAL'] },
-  { type: 'located_on', label: 'расположен на', inverseLabel: 'содержит', from: ['Well', 'WellPad'], to: ['WellPad', 'Field'], cardinality: 'N:1', source: 'Справочники', markings: ['GEO'] },
-  { type: 'has_equipment', label: 'имеет оборудование', inverseLabel: 'установлено на', from: ['Well', 'PumpStation', 'Tank', 'PipelineSegment'], to: ['Equipment'], cardinality: '1:N', source: 'SAP PM функциональные места', markings: ['INTERNAL'] },
+  { type: 'operates', label: 'эксплуатирует', inverseLabel: 'эксплуатируется', from: ['Subsidiary'], to: ['Field', 'Pipeline', 'PumpStation', 'Tank', 'GridArea', 'PowerLine', 'Substation'], cardinality: '1:N', source: 'Справочники', markings: ['INTERNAL'] },
+  { type: 'located_on', label: 'расположен на', inverseLabel: 'содержит', from: ['Well', 'WellPad', 'Feeder', 'Substation', 'PipelineSegment', 'LineSegment'], to: ['WellPad', 'Field', 'GridArea', 'Substation', 'Pipeline', 'PowerLine'], cardinality: 'N:1', source: 'Справочники', markings: ['GEO'] },
+  { type: 'has_equipment', label: 'имеет оборудование', inverseLabel: 'установлено на', from: ['Well', 'PumpStation', 'Tank', 'PipelineSegment', 'Substation', 'Feeder', 'LineSegment'], to: ['Equipment'], cardinality: '1:N', source: 'SAP PM функциональные места', markings: ['INTERNAL'] },
   { type: 'measured_by', label: 'измеряется', inverseLabel: 'измеряет', from: ['Equipment'], to: ['Sensor'], cardinality: '1:N', source: 'Конфигурация SCADA', markings: ['INTERNAL'] },
-  { type: 'detected_on', label: 'обнаружена на', inverseLabel: 'аномалии', from: ['Anomaly'], to: ['Sensor', 'Equipment', 'PumpStation'], cardinality: 'N:1', source: 'ML-пайплайн', markings: ['INTERNAL'] },
+  { type: 'detected_on', label: 'обнаружена на', inverseLabel: 'аномалии', from: ['Anomaly'], to: ['Sensor', 'Equipment', 'PumpStation', 'Substation'], cardinality: 'N:1', source: 'ML-пайплайн', markings: ['INTERNAL'] },
   { type: 'maintains', label: 'обслуживает', inverseLabel: 'заявки ТОиР', from: ['MaintenanceOrder'], to: ['Equipment'], cardinality: 'N:1', source: 'SAP PM', markings: ['INTERNAL'] },
   { type: 'performed_by', label: 'выполняет', inverseLabel: 'выполняет заявки', from: ['MaintenanceOrder'], to: ['Organization', 'Employee'], cardinality: 'N:1', source: 'SAP PM, 1С', markings: ['INTERNAL'] },
   { type: 'under_contract', label: 'по договору', inverseLabel: 'включает', from: ['MaintenanceOrder', 'Shipment'], to: ['Contract'], cardinality: 'N:1', source: 'SAP, ER по номеру', markings: ['CONFIDENTIAL'] },
@@ -297,10 +338,11 @@ export const LINKS: LinkDef[] = [
   { type: 'awarded', label: 'заключён договор', inverseLabel: 'по закупке', from: ['Procurement'], to: ['Contract'], cardinality: '1:1', source: 'ЕИС', markings: ['CONFIDENTIAL'] },
   { type: 'mentions', label: 'упоминает', inverseLabel: 'упомянут в', from: ['Document'], to: ['Organization', 'Person', 'Contract', 'Equipment'], cardinality: 'N:M', source: 'NLP + ER, confidence', markings: ['INTERNAL'] },
   { type: 'attached_to', label: 'приложен к', inverseLabel: 'документы', from: ['Document'], to: ['Contract', 'Incident', 'MaintenanceOrder'], cardinality: 'N:M', source: 'СЭД', markings: ['INTERNAL'] },
-  { type: 'occurred_at', label: 'произошёл на', inverseLabel: 'инциденты', from: ['Incident'], to: ['Equipment', 'PipelineSegment', 'PumpStation'], cardinality: 'N:1', source: 'Журнал', markings: ['CONFIDENTIAL'] },
+  { type: 'occurred_at', label: 'произошёл на', inverseLabel: 'инциденты', from: ['Incident'], to: ['Equipment', 'PipelineSegment', 'PumpStation', 'Substation', 'LineSegment', 'Feeder'], cardinality: 'N:1', source: 'Журнал', markings: ['CONFIDENTIAL'] },
   { type: 'transports', label: 'транспортируется', inverseLabel: 'отгрузки', from: ['Shipment'], to: ['Pipeline', 'Vehicle'], cardinality: 'N:1', source: 'SAP SD, телематика', markings: ['INTERNAL'] },
   { type: 'accessed_under', label: 'доступ под целью', inverseLabel: 'участники', from: ['Employee'], to: ['Purpose'], cardinality: 'N:M', source: 'PBAC', markings: ['INTERNAL'] },
-  { type: 'connects', label: 'соединяет', inverseLabel: 'соединён', from: ['Pipeline'], to: ['PumpStation', 'Field', 'Tank'], cardinality: 'N:M', source: 'Реестр ОПО', markings: ['GEO'] },
+  { type: 'connects', label: 'соединяет', inverseLabel: 'соединён', from: ['Pipeline', 'PowerLine'], to: ['PumpStation', 'Field', 'Tank', 'Substation', 'GridArea'], cardinality: 'N:M', source: 'Реестр ОПО', markings: ['GEO'] },
+  { type: 'feeds', label: 'питает', inverseLabel: 'питается от', from: ['Substation'], to: ['Substation', 'Feeder', 'GridArea'], cardinality: '1:N', source: 'Схема сети', markings: ['INTERNAL'] },
 ]
 export const LINK_BY_TYPE: Record<string, LinkDef> = Object.fromEntries(LINKS.map(l => [l.type, l]))
 
@@ -311,7 +353,7 @@ export const ACTIONS: ActionDef[] = [
     params: [ { name: 'kind', label: 'Тип работ', type: 'enum', options: ['Внеплановый ремонт', 'Диагностика', 'ТО-2', 'Замена узла'], required: true, default: 'Диагностика' }, { name: 'priority', label: 'Приоритет', type: 'enum', options: ['Низкий', 'Средний', 'Высокий', 'Критический'], required: true, default: 'Высокий' }, { name: 'planned', label: 'Плановая дата', type: 'date', required: true, default: '2026-09-18' }, { name: 'description', label: 'Описание', type: 'text' } ] },
   { name: 'change_order_priority', label: 'Изменить приоритет заявки', object: ['MaintenanceOrder'], preconditions: ['Статус не «закрыта»'], writeback: 'SAP PM / 1С', risk: 'Низкий', confirmation: 'Автоматически по политике до порога стоимости',
     params: [ { name: 'priority', label: 'Новый приоритет', type: 'enum', options: ['Низкий', 'Средний', 'Высокий', 'Критический'], required: true } ] },
-  { name: 'open_incident', label: 'Открыть инцидент', object: ['PumpStation', 'Equipment'], preconditions: ['Anomaly score > 0.8 или ручной триггер', 'Нет открытого инцидента по объекту'], writeback: 'Журнал инцидентов, СЭД', risk: 'Высокий', confirmation: '2 человека',
+  { name: 'open_incident', label: 'Открыть инцидент', object: ['PumpStation', 'Equipment', 'Substation'], preconditions: ['Anomaly score > 0.8 или ручной триггер', 'Нет открытого инцидента по объекту'], writeback: 'Журнал инцидентов, СЭД', risk: 'Высокий', confirmation: '2 человека',
     params: [ { name: 'class', label: 'Класс', type: 'enum', options: ['Отклонение параметров', 'Отказ оборудования', 'Утечка', 'Нарушение режима'], required: true, default: 'Отклонение параметров' }, { name: 'description', label: 'Описание', type: 'text', required: true } ] },
   { name: 'request_documents', label: 'Запросить документы', object: ['Organization', 'Contract'], preconditions: ['Открытая закупка или проверка'], writeback: 'Почта / СЭД: исходящее письмо', risk: 'Низкий', confirmation: '1 человек',
     params: [ { name: 'docs', label: 'Документы', type: 'enum', options: ['Учредительные документы', 'Справка об отсутствии задолженности', 'Подтверждение опыта'], required: true }, { name: 'deadline', label: 'Срок ответа', type: 'date', required: true, default: '2026-09-28' } ] },
@@ -327,6 +369,7 @@ export const FUNCTIONS: FunctionDef[] = [
   { name: 'contract_execution_status', label: 'Статус исполнения договора', input: 'заявки, отгрузки, акты', output: '% и просрочка', explain: true },
   { name: 'subsidiary_pl', label: 'P&L ДЗО', input: 'проводки SAP/1С, курсы', output: 'P&L по статьям', explain: true },
   { name: 'freshness', label: 'Свежесть', input: 'метаданные материализации', output: 'секунды и статус SLO', explain: true },
+  { name: 'reliability_indices', label: 'Показатели надёжности SAIDI/SAIFI', input: 'технологические нарушения, потребители, длительность', output: 'минуты и число отключений', explain: true },
 ]
 
 export const ONTOLOGY_VERSION = '1.4.2'
@@ -344,6 +387,6 @@ export const SOURCE_LABELS: Record<string, string> = {
   egrul: 'ЕГРЮЛ', eis: 'ЕИС', etp: 'ЭТП', scada: 'SCADA', opcua: 'OPC UA', historian: 'Historian', sed: 'СЭД', mail: 'Почта', files: 'Файлы',
   nlp: 'NLP', lims: 'LIMS', glonass: 'ГЛОНАСС', manual: 'Справочник', rosnedra: 'Роснедра', prod_registry: 'Справочник добычи', measurements: 'Замеры',
   opo_registry: 'Реестр ОПО', vtd: 'ВТД', incident_log: 'Журнал инцидентов', passports: 'Паспорта', crm: 'CRM', it_landscape: 'ИТ-ландшафт',
-  pbac_registry: 'Реестр PBAC', gas_upravlenie: 'ГАС Управление', hr: 'HR', 'pipelines.anomaly_v3': 'anomaly_v3',
+  pbac_registry: 'Реестр PBAC', gas_upravlenie: 'ГАС Управление', hr: 'HR', 'pipelines.anomaly_v3': 'anomaly_v3', askue: 'АСКУЭ',
 }
 export const srcLabel = (s: string) => SOURCE_LABELS[s] || SOURCE_LABELS[s.split('.')[0]] || s

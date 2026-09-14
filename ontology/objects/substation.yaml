@@ -1,0 +1,94 @@
+# ontology/objects/substation.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Substation
+version: 1.2.0
+owner: team-grid
+description: Электрическая подстанция 220 или 110 кВ
+primary_key: ps_id
+backing_dataset: gold.substation
+provenance: full
+freshness_slo: 30s
+markings: [CONFIDENTIAL, PROD]
+sources: [scada, sap_pm]
+properties: 
+  - name: code
+    label: Код
+    type: string
+    sources: [sap_pm.iflot.tplnr]
+    key: true
+  - name: voltage_kv
+    label: Класс напряжения
+    type: number
+    unit: кВ
+    key: true
+  - name: capacity_mva
+    label: Мощность
+    type: number
+    unit: МВА
+    key: true
+  - name: load_mw
+    label: Нагрузка
+    type: number
+    unit: МВт
+    markings: [PROD]
+    sources: [scada.ps.p]
+    key: true
+    live: true
+  - name: load_pct
+    label: Загрузка
+    type: percent
+    unit: %
+    markings: [PROD]
+    live: true
+  - name: mode
+    label: Режим
+    type: enum
+    sources: [scada.ps.mode]
+    key: true
+    live: true
+  - name: transformer_anomaly_score
+    label: Аномалия трансформатора
+    type: decimal
+    derived_by: pipelines.anomaly_v3
+    key: true
+    live: true
+  - name: open_incidents
+    label: Открытых нарушений
+    type: number
+    key: true
+links: 
+  - name: operates
+    direction: in
+    to: [Subsidiary]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: located_on
+    direction: out
+    to: [WellPad, Field, GridArea, Substation, Pipeline, PowerLine]
+    cardinality: "N:1"
+    markings: [GEO]
+  - name: has_equipment
+    direction: out
+    to: [Equipment]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: detected_on
+    direction: in
+    to: [Anomaly]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+  - name: occurred_at
+    direction: in
+    to: [Incident]
+    cardinality: "N:1"
+    markings: [CONFIDENTIAL]
+  - name: connects
+    direction: in
+    to: [Pipeline, PowerLine]
+    cardinality: "N:M"
+    markings: [GEO]
+  - name: feeds
+    direction: out
+    to: [Substation, Feeder, GridArea]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+actions: [open_incident]

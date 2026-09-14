@@ -53,7 +53,7 @@ properties:
 links: 
   - name: has_equipment
     direction: in
-    to: [Well, PumpStation, Tank, PipelineSegment]
+    to: [Well, PumpStation, Tank, PipelineSegment, Substation, Feeder, LineSegment]
     cardinality: "1:N"
     markings: [INTERNAL]
   - name: measured_by

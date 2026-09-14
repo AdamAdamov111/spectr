@@ -1,10 +1,10 @@
-# ontology/objects/pipelinesegment.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
-object_type: PipelineSegment
+# ontology/objects/linesegment.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: LineSegment
 version: 1.0.0
-owner: team-transport
-description: Участок трубопровода между километрами
+owner: team-grid
+description: Участок линии между опорами
 primary_key: seg_id
-backing_dataset: gold.pipeline_segment
+backing_dataset: gold.line_segment
 provenance: row
 freshness_slo: 1d
 markings: [CONFIDENTIAL]
@@ -18,12 +18,12 @@ properties:
     label: Км конца
     type: number
     key: true
-  - name: category
-    label: Категория
-    type: enum
+  - name: towers
+    label: Опор
+    type: number
     key: true
   - name: defects
-    label: Дефекты ВТД
+    label: Дефекты обследования
     type: number
     key: true
 links: 
