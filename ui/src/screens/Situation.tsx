@@ -50,7 +50,7 @@ export function Situation() {
     <div className="screen situation">
       <div className="situ-map">
         <MapCanvas markers={markers} pipelines={w.pipelines} layers={DEFAULT_LAYERS} selected={selected} hover={hover} onHover={setHover} onSelect={id => id && openObject(id)} onLasso={ids => inspect({ open: true, mode: 'summary', summaryIds: ids })} ambient={ambient} intro={!flyDone} theme={theme} timeOffsetH={offset} staleLayer={chaos.sapStale ? { kind: 'well', text: 'Источник SAP-реплика молчит 14 мин (SLO 15 мин) — слой скважин устарел' } : null} />
-        <div className="map-legend legend"><span><i style={{ background: '#a78bfa' }} />скважины</span><span><i style={{ background: '#22d3ee' }} />НПС / резервуары</span><span><i style={{ background: '#ef4444' }} />аномалии / инциденты</span><span><i style={{ background: '#93a1b0' }} />техника</span><span className="dim">Shift+drag — лассо · колесо — масштаб</span></div>
+        <div className="map-legend legend"><span><i style={{ background: '#9d8be8' }} />скважины</span><span><i style={{ background: '#4c90f0' }} />НПС / резервуары</span><span><i style={{ background: '#e76a6e' }} />аномалии / инциденты</span><span><i style={{ background: '#abb3bf' }} />техника</span><span className="dim">Shift+drag — лассо · колесо — масштаб</span></div>
         <div className="timeline">
           <span className="mono dim" style={{ fontSize: 10 }}>−24 ч</span>
           <input type="range" min={0} max={24} value={24 - offset} onChange={e => setOffset(24 - Number(e.target.value))} aria-label="Таймлайн 24 часа" />
@@ -86,7 +86,7 @@ export function Situation() {
   )
 }
 
-const TONE_COLOR = { danger: '#ef4444', warn: '#f59e0b', ok: '#22c55e', accent: '#22d3ee', default: '#93a1b0' }
+const TONE_COLOR = { danger: '#e76a6e', warn: '#ec9a3c', ok: '#32a467', accent: '#4c90f0', default: '#abb3bf' }
 function sparkData(key: string, v: number, trend: number): number[] { const r = new Rng(hash32(key)); const out: number[] = []; let x = v * (1 - trend / 100 * 1.2); for (let i = 0; i < 16; i++) { x = x * (1 + r.gauss(0, 0.02)) + (v - x) * 0.12; out.push(x) } out.push(v); return out }
 function Kpi({ label, v, d = 0, unit, sub, tone, onClick, delta, deltaAbs, spark }: { label: string; v: number; d?: number; unit?: string; sub?: string; tone?: 'danger' | 'warn' | 'ok' | 'accent'; onClick?: () => void; delta?: number; deltaAbs?: boolean; spark?: string }) {
   const color = TONE_COLOR[tone || 'default']

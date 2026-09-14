@@ -36,9 +36,11 @@ export function Shell() {
   const simulation = useStore(s => s.simulation)
   const connection = useStore(s => s.connection)
   const palette = useStore(s => s.palette); const help = useStore(s => s.help)
+  const session = useStore(s => s.session)
   useShortcuts()
   useHashSync()
   const tab = tabs.find(t => t.id === activeTab) || tabs[0]
+  if (!session) return null
   return (
     <div className={`shell ${tickerOpen ? 'ticker-open' : ''}`}>
       {connection !== 'ok' && <div className={`status-bar ${connection}`} />}
@@ -74,10 +76,10 @@ function Rail() {
   const tab = tabs.find(t => t.id === activeTab)
   return (
     <nav className="rail">
-      <div className="rail-logo" title="SPECTR"><LogoMark size={30} /></div>
-      {SCREENS.map(s => { const I = SCREEN_ICONS[s.key]; return <button key={s.key} className={`rail-btn ${tab?.kind === 'screen' && tab.screen === s.key ? 'active' : ''}`} onClick={() => openScreen(s.key)} aria-label={s.label}><I size={18} /><span className="rail-label">{s.label}<Kbd k={s.hint} /></span></button> })}
+      <div className="rail-logo" title="SPECTR"><LogoMark size={34} /></div>
+      {SCREENS.map(s => { const I = SCREEN_ICONS[s.key]; return <button key={s.key} className={`rail-btn ${tab?.kind === 'screen' && tab.screen === s.key ? 'active' : ''}`} onClick={() => openScreen(s.key)} aria-label={s.label}><I size={22} strokeWidth={1.75} /><span className="rail-label">{s.label}<Kbd k={s.hint} /></span></button> })}
       <div className="rail-bottom" />
-      <button className="rail-btn" onClick={() => setHelp(true)} aria-label="Подсказка по клавишам"><Keyboard size={18} /><span className="rail-label">Клавиши<Kbd k="?" /></span></button>
+      <button className="rail-btn" onClick={() => setHelp(true)} aria-label="Подсказка по клавишам"><Keyboard size={22} strokeWidth={1.75} /><span className="rail-label">Клавиши<Kbd k="?" /></span></button>
       <RailUser />
     </nav>
   )
@@ -103,7 +105,7 @@ function TopBar() {
   const left = Math.max(0, expires - Date.now())
   return (
     <header className="topbar">
-      <span className="brand"><LogoMark size={20} />SPECTR</span>
+      <span className="brand"><LogoMark size={22} />SPECTR</span>
       <span className="env-badge" title="Изолированный контур, российские ОС, без обращения к внешним сервисам"><i />ON-PREM · ИЗОЛИРОВАННЫЙ КОНТУР</span>
       <span className="crumbs"><b>Северная нефть</b>{dzo && <><span className="sep">›</span><span>{dzo}</span></>}{obj && <><span className="sep">›</span><b>{obj.label}</b></>}{!obj && tab?.kind === 'screen' && <><span className="sep">›</span><span>{tab.title}</span></>}</span>
       <button className="pill" onClick={() => setPalette(true)} title="Командная палитра"><Command size={11} />K</button>

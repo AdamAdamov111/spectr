@@ -90,7 +90,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(p, 
       const pr = propsRef.current; const { w, h } = size.current; const light = pr.theme === 'light'
       if (!reducedMotion() || alpha.current > 0.5) step(dt)
       ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
-      ctx.fillStyle = light ? '#f0f3f6' : '#070b11'; ctx.fillRect(0, 0, w, h)
+      ctx.fillStyle = light ? '#edeff2' : '#0d1013'; ctx.fillRect(0, 0, w, h)
       const z = cam.current.z
       const hov = hover.current
       const neigh = new Set<string>()
@@ -109,10 +109,10 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(p, 
         const onPath = pi != null && pi <= lit
         let alphaL = hov ? (neigh.has(l.from) && neigh.has(l.to) ? 0.9 : 0.12) : 0.55
         if (focusMode && !onPath && !(pr.dimOthers && pathNodes.has(l.from) && pathNodes.has(l.to))) alphaL *= 0.25
-        ctx.strokeStyle = onPath ? '#22d3ee' : light ? `rgba(60,75,90,${alphaL})` : `rgba(147,161,176,${alphaL})`
+        ctx.strokeStyle = onPath ? '#4c90f0' : light ? `rgba(60,75,90,${alphaL})` : `rgba(171,179,191,${alphaL})`
         ctx.lineWidth = onPath ? 3 : Math.max(0.6, l.confidence * 2.2 * Math.min(1, z))
         if (l.confidence < 0.6 || l.dashed) ctx.setLineDash([4, 4]); else ctx.setLineDash([])
-        if (onPath) { ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 10 }
+        if (onPath) { ctx.shadowColor = '#4c90f0'; ctx.shadowBlur = 8 }
         ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke(); ctx.shadowBlur = 0; ctx.setLineDash([])
         if ((hov && neigh.has(l.from) && neigh.has(l.to)) || onPath) { ctx.fillStyle = light ? '#334' : '#93a1b0'; ctx.font = `${pr.wall ? 14 : 10}px "Inter Variable", sans-serif`; ctx.fillText(l.label, (ax + bx) / 2 + 4, (ay + by) / 2 - 4) }
       }
@@ -123,7 +123,7 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(p, 
         const P = pos.current.get(nd.id); if (!P) continue
         const [sx, sy] = toScreen(P.x, P.y)
         if (sx < -30 || sy < -30 || sx > w + 30 || sy > h + 30) continue
-        const r = (nd.size ?? (nd.root ? 11 : 7)) * Math.max(0.6, Math.min(1.6, z))
+        const r = (nd.size ?? (nd.root ? 13 : 9)) * Math.max(0.6, Math.min(1.6, z))
         const isSel = pr.selected === nd.id; const isHov = hov === nd.id
         let alphaN = hov ? (neigh.has(nd.id) ? 1 : 0.2) : 1
         if (focusMode && !pathNodes.has(nd.id)) alphaN *= 0.35
@@ -133,15 +133,15 @@ export const ForceGraph = forwardRef<GraphHandle, Props>(function ForceGraph(p, 
         else {
           ctx.fillStyle = nd.color; if (isSel || isHov) { ctx.shadowColor = nd.color; ctx.shadowBlur = 18 }
           ctx.beginPath(); ctx.arc(sx, sy, r * pop, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0
-          if (isSel) { ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sx, sy, r * pop + 4, 0, Math.PI * 2); ctx.stroke() }
+          if (isSel) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sx, sy, r * pop + 4, 0, Math.PI * 2); ctx.stroke() }
           if (nd.pinned) { ctx.fillStyle = light ? '#0e1620' : '#e6edf3'; ctx.beginPath(); ctx.arc(sx + r * 0.7, sy - r * 0.7, 2.5, 0, Math.PI * 2); ctx.fill() }
-          if (showLabels && (z > 0.4 || isSel || isHov || nd.root)) { ctx.fillStyle = light ? '#0e1620' : isSel || isHov ? '#e6edf3' : '#c7d0d9'; ctx.font = `${isSel || nd.root ? 600 : 400} ${pr.wall ? 16 : 11}px "Inter Variable", sans-serif`; ctx.fillText(nd.label.length > 28 ? nd.label.slice(0, 27) + '…' : nd.label, sx + r + 5, sy + 4) }
+          if (showLabels && (z > 0.4 || isSel || isHov || nd.root)) { ctx.fillStyle = light ? '#0e1620' : isSel || isHov ? '#e6edf3' : '#c7d0d9'; ctx.font = `${isSel || nd.root ? 600 : 500} ${pr.wall ? 17 : 12.5}px "Inter Variable", sans-serif`; ctx.fillText(nd.label.length > 28 ? nd.label.slice(0, 27) + '…' : nd.label, sx + r + 5, sy + 4) }
         }
         ctx.globalAlpha = 1
       }
       // minimap
       const mc = mini.current
-      if (mc && !pr.mini) { const mctx = mc.getContext('2d')!; mc.width = 140 * devicePixelRatio; mc.height = 90 * devicePixelRatio; mctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); mctx.fillStyle = light ? 'rgba(255,255,255,0.7)' : 'rgba(13,19,27,0.85)'; mctx.fillRect(0, 0, 140, 90); const ps = [...pos.current.values()]; if (ps.length) { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const q of ps) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y) } const sc = Math.min(120 / (x1 - x0 + 1), 70 / (y1 - y0 + 1)); const mx = (x: number) => 10 + (x - x0) * sc, my = (y: number) => 10 + (y - y0) * sc; for (const nd of pr.nodes) { const q = pos.current.get(nd.id); if (!q) continue; mctx.fillStyle = nd.color; mctx.fillRect(mx(q.x) - 1, my(q.y) - 1, 2, 2) } const [vx0, vy0] = toWorld(0, 0), [vx1, vy1] = toWorld(w, h); mctx.strokeStyle = '#22d3ee'; mctx.lineWidth = 1; mctx.strokeRect(mx(vx0), my(vy0), (vx1 - vx0) * sc, (vy1 - vy0) * sc) } }
+      if (mc && !pr.mini) { const mctx = mc.getContext('2d')!; mc.width = 140 * devicePixelRatio; mc.height = 90 * devicePixelRatio; mctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); mctx.fillStyle = light ? 'rgba(255,255,255,0.7)' : 'rgba(13,19,27,0.85)'; mctx.fillRect(0, 0, 140, 90); const ps = [...pos.current.values()]; if (ps.length) { let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const q of ps) { x0 = Math.min(x0, q.x); y0 = Math.min(y0, q.y); x1 = Math.max(x1, q.x); y1 = Math.max(y1, q.y) } const sc = Math.min(120 / (x1 - x0 + 1), 70 / (y1 - y0 + 1)); const mx = (x: number) => 10 + (x - x0) * sc, my = (y: number) => 10 + (y - y0) * sc; for (const nd of pr.nodes) { const q = pos.current.get(nd.id); if (!q) continue; mctx.fillStyle = nd.color; mctx.fillRect(mx(q.x) - 1, my(q.y) - 1, 2, 2) } const [vx0, vy0] = toWorld(0, 0), [vx1, vy1] = toWorld(w, h); mctx.strokeStyle = '#4c90f0'; mctx.lineWidth = 1; mctx.strokeRect(mx(vx0), my(vy0), (vx1 - vx0) * sc, (vy1 - vy0) * sc) } }
       if (running) raf = requestAnimationFrame(draw)
     }
     raf = requestAnimationFrame(draw)

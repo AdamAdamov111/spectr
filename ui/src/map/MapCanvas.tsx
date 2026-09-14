@@ -63,30 +63,30 @@ export function MapCanvas(p: Props) {
       const { w, h } = size.current
       ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
       const light = pr.theme === 'light'
-      ctx.fillStyle = light ? '#e9eef3' : '#070b11'; ctx.fillRect(0, 0, w, h)
+      ctx.fillStyle = light ? '#edeff2' : '#0d1013'; ctx.fillRect(0, 0, w, h)
       // camera flight (ease-inout)
       if (flyStart.current && target.current) { const f = flyStart.current; const k = Math.min(1, Math.max(0, (t - f.t0) / f.dur)); const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; cam.current = { x: f.from.x + (target.current.x - f.from.x) * e, y: f.from.y + (target.current.y - f.from.y) * e, z: f.from.z + (target.current.z - f.from.z) * e }; if (k >= 1) { flyStart.current = null; target.current = null } }
       const z = cam.current.z * (w / 1000)
       // grid + coordinates
       const step = 50 * z
       const [ox, oy] = toScreen(0, 0)
-      ctx.strokeStyle = light ? 'rgba(14,22,32,0.07)' : 'rgba(230,237,243,0.05)'; ctx.lineWidth = 1; ctx.beginPath()
+      ctx.strokeStyle = light ? 'rgba(28,33,39,0.06)' : 'rgba(246,247,249,0.035)'; ctx.lineWidth = 1; ctx.beginPath()
       for (let x = ox % step; x < w; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, h) }
       for (let y = oy % step; y < h; y += step) { ctx.moveTo(0, y); ctx.lineTo(w, y) }
       ctx.stroke()
-      ctx.fillStyle = light ? 'rgba(14,22,32,0.35)' : 'rgba(147,161,176,0.35)'; ctx.font = `${pr.wall ? 14 : 9}px "JetBrains Mono Variable", monospace`
+      ctx.fillStyle = light ? 'rgba(28,33,39,0.4)' : 'rgba(171,179,191,0.4)'; ctx.font = `${pr.wall ? 14 : 10}px "JetBrains Mono Variable", monospace`
       for (let x = ox % (step * 4); x < w; x += step * 4) { const wx = toWorld(x, 0)[0]; ctx.fillText(`${(73 + wx / 400).toFixed(2)}E`, x + 3, 12) }
       for (let y = oy % (step * 4); y < h; y += step * 4) { const wy = toWorld(0, y)[1]; ctx.fillText(`${(61 + wy / 900).toFixed(2)}N`, 3, y - 3) }
       const stale = pr.staleLayer?.kind
       // fields
-      if (pr.layers.fields) for (const m of pr.markers) if (m.kind === 'field') { const [sx, sy] = toScreen(m.x, m.y); const r = 62 * z; const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r); g.addColorStop(0, 'rgba(167,139,250,0.16)'); g.addColorStop(1, 'rgba(167,139,250,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(sx, sy, r, r * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(167,139,250,0.35)'; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.ellipse(sx, sy, r, r * 0.7, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = light ? '#4c3d99' : '#c4b5fd'; ctx.font = `${(pr.wall ? 18 : 11)}px "Inter Variable", sans-serif`; ctx.fillText(m.label || '', sx - r * 0.5, sy - r * 0.7 - 6) }
+      if (pr.layers.fields) for (const m of pr.markers) if (m.kind === 'field') { const [sx, sy] = toScreen(m.x, m.y); const r = 62 * z; const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r); g.addColorStop(0, 'rgba(167,139,250,0.16)'); g.addColorStop(1, 'rgba(167,139,250,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(sx, sy, r, r * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(167,139,250,0.35)'; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.ellipse(sx, sy, r, r * 0.7, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = light ? '#5c4bb5' : '#c9bfff'; ctx.font = `500 ${(pr.wall ? 20 : 13)}px "Inter Variable", sans-serif`; ctx.fillText(m.label || '', sx - r * 0.5, sy - r * 0.7 - 6) }
       // pipelines
       if (pr.layers.pipelines) pr.pipelines.forEach((pl, pi) => {
         const pts = pl.points.map(q => toScreen(q[0], q[1]))
-        const pressureColor = pl.pressure > 6.5 ? '#f59e0b' : '#22d3ee'
+        const pressureColor = pl.pressure > 6.5 ? '#ec9a3c' : '#8abbff'
         ctx.lineJoin = 'round'; ctx.lineCap = 'round'
-        ctx.strokeStyle = light ? 'rgba(8,145,178,0.18)' : 'rgba(34,211,238,0.12)'; ctx.lineWidth = Math.max(6, (pl.flow / 900) * z * 5); ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke()
-        ctx.strokeStyle = light ? 'rgba(8,145,178,0.55)' : 'rgba(34,211,238,0.32)'; ctx.lineWidth = Math.max(1.5, (pl.flow / 900) * z * 1.6); ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke()
+        ctx.strokeStyle = light ? 'rgba(45,114,210,0.14)' : 'rgba(76,144,240,0.1)'; ctx.lineWidth = Math.max(6, (pl.flow / 900) * z * 5); ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke()
+        ctx.strokeStyle = light ? 'rgba(45,114,210,0.6)' : 'rgba(138,187,255,0.42)'; ctx.lineWidth = Math.max(1.8, (pl.flow / 900) * z * 1.8); ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke()
         if (pr.ambient && !rm) {
           const segs: number[] = []; let total = 0
           for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push(l); total += l }
@@ -98,7 +98,7 @@ export function MapCanvas(p: Props) {
             ctx.fillStyle = pressureColor; ctx.shadowColor = pressureColor; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(x, y, Math.max(1.2, 1.8 * z), 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0
           }
         }
-        if (z > 0.9) { const mid = pts[Math.floor(pts.length / 2)]; ctx.fillStyle = light ? '#0e7490' : 'rgba(103,232,249,0.7)'; ctx.font = `${pr.wall ? 14 : 10}px "JetBrains Mono Variable", monospace`; ctx.fillText(`${pl.code.split(' ')[0]} · ${pl.flow} м³/ч`, mid[0] + 6, mid[1] - 6) }
+        if (z > 0.9) { const mid = pts[Math.floor(pts.length / 2)]; ctx.fillStyle = light ? '#215db0' : 'rgba(138,187,255,0.8)'; ctx.font = `${pr.wall ? 14 : 11}px "JetBrains Mono Variable", monospace`; ctx.fillText(`${pl.code.split(' ')[0]} · ${pl.flow} м³/ч`, mid[0] + 6, mid[1] - 6) }
       })
       // markers
       const hov = hoverRef.current
@@ -113,21 +113,21 @@ export function MapCanvas(p: Props) {
         const isStale = stale === m.kind
         const sel = pr.selected === m.id; const hv = hov === m.id
         ctx.globalAlpha = isStale ? 0.45 : 1
-        if (m.kind === 'well') { if (z < 0.6) continue; ctx.fillStyle = m.status === 'в работе' ? (m.value && m.value < 0 ? '#f59e0b' : '#a78bfa') : '#5c6b7a'; ctx.beginPath(); ctx.arc(sx, sy, Math.max(1.5, 2.2 * z), 0, Math.PI * 2); ctx.fill(); if (z > 2.4) { ctx.fillStyle = light ? '#334' : '#93a1b0'; ctx.font = '9px "JetBrains Mono Variable", monospace'; ctx.fillText(m.label || '', sx + 4, sy + 3) } }
-        else if (m.kind === 'pad') { ctx.strokeStyle = 'rgba(167,139,250,0.6)'; ctx.lineWidth = 1; ctx.strokeRect(sx - 4 * z, sy - 4 * z, 8 * z, 8 * z) }
-        else if (m.kind === 'tank') { const s = Math.max(3, 5 * z); ctx.fillStyle = light ? '#0891b2' : '#22d3ee'; ctx.globalAlpha *= 0.85; ctx.beginPath(); ctx.arc(sx, sy, s, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = isStale ? 0.45 : 1; if (m.value != null) { ctx.strokeStyle = light ? '#0e7490' : '#67e8f9'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(sx, sy, s + 2, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (m.value / 100)); ctx.stroke() } }
-        else if (m.kind === 'nps') { const s = Math.max(6, 11 * z); const col = m.score && m.score > 0.8 ? '#ef4444' : '#22d3ee'; ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 16; hex(ctx, sx, sy, s); ctx.fill(); ctx.shadowBlur = 0; ctx.font = `600 ${pr.wall ? 20 : 12}px "Inter Variable", sans-serif`; const tw = ctx.measureText(m.label || '').width; ctx.fillStyle = light ? 'rgba(255,255,255,0.8)' : 'rgba(8,13,20,0.75)'; roundRect(ctx, sx + s + 4, sy - 9, tw + 12, 18, 5); ctx.fill(); ctx.fillStyle = light ? '#0e1620' : '#e6edf3'; ctx.fillText(m.label || '', sx + s + 10, sy + 4); if (m.score && m.score > 0.8) { const born = anomalyBorn.current.get(m.id) ?? (anomalyBorn.current.set(m.id, now), now); const age = now - born; for (let k = 0; k < 2; k++) { const ph = ((age - k * 600) % 1200) / 1200; if (age < 2400 + 1200 && ph >= 0 && !rm) { ctx.strokeStyle = `rgba(239,68,68,${(1 - ph) * 0.9})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sx, sy, s + ph * 40 * z, 0, Math.PI * 2); ctx.stroke() } } ctx.strokeStyle = `rgba(239,68,68,${0.35 + 0.15 * Math.sin(now / 400)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(sx, sy, s + 5, 0, Math.PI * 2); ctx.stroke() } }
+        if (m.kind === 'well') { if (z < 0.6) continue; ctx.fillStyle = m.status === 'в работе' ? (m.value && m.value < 0 ? '#f59e0b' : '#a78bfa') : '#5c6b7a'; ctx.beginPath(); ctx.arc(sx, sy, Math.max(2, 3 * z), 0, Math.PI * 2); ctx.fill(); if (z > 2.2) { ctx.fillStyle = light ? '#334' : '#93a1b0'; ctx.font = '9px "JetBrains Mono Variable", monospace'; ctx.fillText(m.label || '', sx + 4, sy + 3) } }
+        else if (m.kind === 'pad') { ctx.strokeStyle = 'rgba(167,139,250,0.6)'; ctx.lineWidth = 1; ctx.strokeRect(sx - 5 * z, sy - 5 * z, 10 * z, 10 * z) }
+        else if (m.kind === 'tank') { const s = Math.max(4, 6.5 * z); ctx.fillStyle = light ? '#0891b2' : '#22d3ee'; ctx.globalAlpha *= 0.85; ctx.beginPath(); ctx.arc(sx, sy, s, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = isStale ? 0.45 : 1; if (m.value != null) { ctx.strokeStyle = light ? '#0e7490' : '#67e8f9'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(sx, sy, s + 2, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (m.value / 100)); ctx.stroke() } }
+        else if (m.kind === 'nps') { const s = Math.max(8, 14 * z); const col = m.score && m.score > 0.8 ? '#e76a6e' : '#4c90f0'; ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 10; hex(ctx, sx, sy, s); ctx.fill(); ctx.shadowBlur = 0; ctx.font = `600 ${pr.wall ? 22 : 14}px "Inter Variable", sans-serif`; const tw = ctx.measureText(m.label || '').width; ctx.fillStyle = light ? 'rgba(255,255,255,0.8)' : 'rgba(8,13,20,0.75)'; roundRect(ctx, sx + s + 4, sy - 11, tw + 14, 22, 3); ctx.fill(); ctx.fillStyle = light ? '#1c2127' : '#f6f7f9'; ctx.fillText(m.label || '', sx + s + 11, sy + 5); if (m.score && m.score > 0.8) { const born = anomalyBorn.current.get(m.id) ?? (anomalyBorn.current.set(m.id, now), now); const age = now - born; for (let k = 0; k < 2; k++) { const ph = ((age - k * 600) % 1200) / 1200; if (age < 2400 + 1200 && ph >= 0 && !rm) { ctx.strokeStyle = `rgba(239,68,68,${(1 - ph) * 0.9})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sx, sy, s + ph * 40 * z, 0, Math.PI * 2); ctx.stroke() } } ctx.strokeStyle = `rgba(239,68,68,${0.35 + 0.15 * Math.sin(now / 400)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(sx, sy, s + 5, 0, Math.PI * 2); ctx.stroke() } }
         else if (m.kind === 'vehicle') { if (z < 0.7) continue; ctx.fillStyle = light ? '#4b5967' : '#93a1b0'; ctx.beginPath(); ctx.moveTo(sx, sy - 4); ctx.lineTo(sx + 4, sy + 3); ctx.lineTo(sx - 4, sy + 3); ctx.closePath(); ctx.fill() }
         else if (m.kind === 'anomaly') { const r = Math.max(4, (m.score || 0.5) * 12 * z); const born = anomalyBorn.current.get(m.id) ?? (anomalyBorn.current.set(m.id, now), now); const age = now - born; if (!rm && age < 2400) { for (let k = 0; k < 2; k++) { const ph = ((age - k * 600) % 1200) / 1200; if (ph >= 0) { ctx.strokeStyle = `rgba(239,68,68,${(1 - ph) * 0.8})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(sx, sy, r + ph * 30, 0, Math.PI * 2); ctx.stroke() } } } ctx.fillStyle = `rgba(239,68,68,${0.25 + 0.1 * Math.sin(now / 500)})`; ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1; ctx.stroke() }
         else if (m.kind === 'incident') { const s = Math.max(4, 6 * z); ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.moveTo(sx, sy - s); ctx.lineTo(sx + s, sy); ctx.lineTo(sx, sy + s); ctx.lineTo(sx - s, sy); ctx.closePath(); ctx.fill() }
-        if (sel || hv) { ctx.strokeStyle = sel ? '#22d3ee' : 'rgba(34,211,238,0.6)'; ctx.lineWidth = sel ? 2 : 1; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(sx, sy, 14 * Math.max(0.6, z), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); if (hv && m.kind !== 'nps') { ctx.fillStyle = light ? '#0e1620' : '#e6edf3'; ctx.font = '11px "Inter Variable", sans-serif'; ctx.fillText(m.label || m.id, sx + 12, sy - 10) } }
+        if (sel || hv) { ctx.strokeStyle = sel ? '#ffffff' : 'rgba(255,255,255,0.6)'; ctx.lineWidth = sel ? 2 : 1; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(sx, sy, 14 * Math.max(0.6, z), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); if (hv && m.kind !== 'nps') { ctx.fillStyle = light ? '#1c2127' : '#f6f7f9'; ctx.font = '500 13px "Inter Variable", sans-serif'; ctx.fillText(m.label || m.id, sx + 14, sy - 12) } }
         ctx.globalAlpha = 1
       }
       // heat layer (risk)
       if (pr.layers.heat) for (const m of pr.markers) if (m.risk != null && m.risk > 0.4) { const [sx, sy] = toScreen(m.x, m.y); const r = 40 * z; const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r); g.addColorStop(0, `rgba(239,68,68,${m.risk * 0.35})`); g.addColorStop(1, 'rgba(239,68,68,0)'); ctx.fillStyle = g; ctx.fillRect(sx - r, sy - r, r * 2, r * 2) }
       // vignette + ambient sweep
       const vg = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, light ? 'rgba(15,23,42,0.18)' : 'rgba(0,0,0,0.55)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h)
-      if (pr.ambient && !rm) { const sy = ((now / 9000) % 1) * (h + 120) - 60; const sg = ctx.createLinearGradient(0, sy - 40, 0, sy + 40); sg.addColorStop(0, 'rgba(34,211,238,0)'); sg.addColorStop(0.5, light ? 'rgba(8,145,178,0.05)' : 'rgba(34,211,238,0.045)'); sg.addColorStop(1, 'rgba(34,211,238,0)'); ctx.fillStyle = sg; ctx.fillRect(0, sy - 40, w, 80) }
+      
       if (pr.staleLayer) { ctx.fillStyle = 'rgba(239,68,68,0.9)'; ctx.font = `${pr.wall ? 16 : 11}px "JetBrains Mono Variable", monospace`; ctx.fillText(`⚠ ${pr.staleLayer.text}`, 12, h - 12) }
       if (pr.timeOffsetH) { ctx.fillStyle = 'rgba(245,158,11,0.9)'; ctx.font = `${pr.wall ? 16 : 11}px "JetBrains Mono Variable", monospace`; ctx.fillText(`◷ состояние −${pr.timeOffsetH} ч`, w - 150, h - 12) }
       if (running) raf = requestAnimationFrame(draw)

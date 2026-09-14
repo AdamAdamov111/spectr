@@ -79,12 +79,12 @@ function Telemetry({ e }: { e: SpObject }) {
       c.setOption({
         backgroundColor: 'transparent', animationDuration: rm ? 0 : 600, animationEasing: 'linear',
         grid: { left: 44, right: 12, top: 26, bottom: 22 },
-        title: { text: `${s.label} · ${kind}, ${s.props.unit}`, left: 4, top: 2, textStyle: { color: light ? '#4b5967' : '#93a1b0', fontSize: 11, fontWeight: 'normal', fontFamily: 'JetBrains Mono Variable, monospace' } },
-        tooltip: { trigger: 'axis', backgroundColor: light ? '#fff' : '#131b25', borderColor: light ? '#d5dce3' : '#2b3846', textStyle: { color: light ? '#0e1620' : '#e6edf3', fontSize: 11 }, axisPointer: { type: 'line', lineStyle: { color: '#22d3ee' } } },
+        title: { text: `${s.label} · ${kind}, ${s.props.unit}`, left: 4, top: 2, textStyle: { color: light ? '#5f6b7c' : '#abb3bf', fontSize: 12, fontWeight: 'normal', fontFamily: 'Inter Variable, sans-serif' } },
+        tooltip: { trigger: 'axis', backgroundColor: light ? '#fff' : '#252a31', borderColor: light ? '#d5dce3' : '#3a434d', textStyle: { color: light ? '#1c2127' : '#f6f7f9', fontSize: 12 }, axisPointer: { type: 'line', lineStyle: { color: '#4c90f0' } } },
         xAxis: { type: 'time', axisLine: { lineStyle: { color: light ? '#b9c3cd' : '#1e2935' } }, axisLabel: { color: light ? '#4b5967' : '#5c6b7a', fontSize: 10 }, splitLine: { show: false } },
         yAxis: { type: 'value', scale: true, axisLabel: { color: light ? '#4b5967' : '#5c6b7a', fontSize: 10 }, splitLine: { lineStyle: { color: light ? '#e6ebf0' : '#131b25' } } },
-        series: [{ type: 'line', showSymbol: false, data: data.map(d => [d.t, d.v]), lineStyle: { width: 1.4, color: kind === 'давление' ? '#22d3ee' : kind === 'вибрация' ? '#a78bfa' : '#f59e0b' }, areaStyle: { color: kind === 'давление' ? 'rgba(34,211,238,0.08)' : kind === 'вибрация' ? 'rgba(167,139,250,0.08)' : 'rgba(245,158,11,0.08)' },
-          markArea: areas.length ? { silent: false, itemStyle: { color: 'rgba(239,68,68,0.16)', borderColor: '#ef4444', borderWidth: 1 }, label: { color: '#ef4444', fontSize: 10, position: 'insideTop' }, data: areas, animationDelay: rm ? 0 : 800 } : undefined }],
+        series: [{ type: 'line', showSymbol: false, data: data.map(d => [d.t, d.v]), lineStyle: { width: 1.6, color: kind === 'давление' ? '#4c90f0' : kind === 'вибрация' ? '#9d8be8' : '#ec9a3c' }, areaStyle: { color: kind === 'давление' ? 'rgba(76,144,240,0.1)' : kind === 'вибрация' ? 'rgba(157,139,232,0.1)' : 'rgba(236,154,60,0.1)' },
+          markArea: areas.length ? { silent: false, itemStyle: { color: 'rgba(231,106,110,0.18)', borderColor: '#e76a6e', borderWidth: 1 }, label: { color: '#e76a6e', fontSize: 11, position: 'insideTop' }, data: areas, animationDelay: rm ? 0 : 800 } : undefined }],
       })
     })
     if (charts.length > 1) echarts.connect(charts)

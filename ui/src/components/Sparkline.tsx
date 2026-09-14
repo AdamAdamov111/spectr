@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 /** Tiny canvas sparkline with gradient fill (Tremor-style KPI accent). */
-export function Sparkline({ data, width = 84, height = 26, color = '#22d3ee' }: { data: number[]; width?: number; height?: number; color?: string }) {
+export function Sparkline({ data, width = 84, height = 26, color = '#4c90f0' }: { data: number[]; width?: number; height?: number; color?: string }) {
   const ref = useRef<HTMLCanvasElement>(null)
   useEffect(() => {
     const c = ref.current; if (!c || !data.length) return
