@@ -211,3 +211,8 @@
 .prop-row .prop-src { opacity: 0; transition: opacity var(--mo-fast); }
 .prop-row:hover .prop-src { opacity: 1; }
 .situ-map { border-right: 1px solid var(--sp-border); }
+
+/* series panel (open-data time series on object cards) */
+.series-panel { padding: 8px 10px 10px; }
+.tabs.tabs-sub { margin-bottom: 6px; }
+.tabs.tabs-sub button { height: 30px; font-size: 12px; padding: 0 10px; }

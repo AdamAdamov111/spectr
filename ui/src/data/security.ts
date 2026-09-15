@@ -13,7 +13,7 @@ export interface UserDef {
 }
 
 export const USERS: UserDef[] = [
-  { login: 'sc_head', name: 'Иванов А. В.', role: 'sc', roleLabel: 'Руководитель ситуационного центра', clearance: { level: 'CONFIDENTIAL', categories: ['PROD', 'GEO', 'LEGAL'] }, purposes: ['situation_monitoring', 'incident_investigation_2026_Q3', 'situation_wall'], otp: '482913' },
+  { login: 'sc_head', name: 'Адам Эдгарович', role: 'sc', roleLabel: 'Руководитель ситуационного центра', clearance: { level: 'CONFIDENTIAL', categories: ['PROD', 'GEO', 'LEGAL'] }, purposes: ['situation_monitoring', 'incident_investigation_2026_Q3', 'situation_wall'], otp: '482913' },
   { login: 'toir_eng', name: 'Галиев Р. М.', role: 'toir', roleLabel: 'Инженер ТОиР, СН-Транспорт', subsidiary: 'transport', clearance: { level: 'CONFIDENTIAL', categories: ['PROD'] }, purposes: ['toir_planning', 'situation_monitoring'], otp: '117204' },
   { login: 'seb_analyst', name: 'Смирнова Е. П.', role: 'seb', roleLabel: 'Аналитик службы экономической безопасности', clearance: { level: 'CONFIDENTIAL', categories: ['FIN', 'PII', 'LEGAL'] }, purposes: ['procurement_check', 'incident_investigation_2026_Q3'], otp: '905311' },
   { login: 'analyst_open', name: 'Козлов Д. С.', role: 'analyst', roleLabel: 'Аналитик данных (без допусков)', clearance: { level: 'INTERNAL', categories: [] }, purposes: ['toir_planning'], otp: '331870' },

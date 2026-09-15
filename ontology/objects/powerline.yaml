@@ -38,7 +38,7 @@ properties:
     live: true
   - name: commissioned
     label: Год ввода
-    type: number
+    type: year
 links: 
   - name: operates
     direction: in
@@ -47,12 +47,12 @@ links:
     markings: [INTERNAL]
   - name: located_on
     direction: in
-    to: [Well, WellPad, Feeder, Substation, PipelineSegment, LineSegment]
+    to: [Well, WellPad, Feeder, Substation, PipelineSegment, LineSegment, PumpStation, Terminal]
     cardinality: "N:1"
     markings: [GEO]
   - name: connects
     direction: out
-    to: [PumpStation, Field, Tank, Substation, GridArea]
+    to: [PumpStation, Field, Tank, Refinery, Terminal, Substation, GridArea]
     cardinality: "N:M"
     markings: [GEO]
 actions: []

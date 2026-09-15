@@ -1,20 +1,25 @@
-// Schematic asset map — canvas "tactical" rendering (production: MapLibre + deck.gl, spec 8.9).
-// Layers: fields, pipelines with flow particles (MO-16), wells, NPS, tanks, vehicles, anomalies with expanding rings (MO-15), incidents.
+// Schematic asset map — quiet canvas rendering (production: MapLibre + deck.gl, spec 8.9).
+// One base map (country outlines), thin pipelines, small glyphs; only anomalies and incidents use colour.
 import { useEffect, useRef, useState } from 'react'
 import type { PipelineGeom } from '../data/generator'
+import type { Basemap } from './geo'
 import { reducedMotion } from '../app/store'
 
-export interface MapMarker { id: string; kind: 'well' | 'pad' | 'field' | 'nps' | 'tank' | 'vehicle' | 'anomaly' | 'incident' | 'equipment'; x: number; y: number; label?: string; score?: number; status?: string; value?: number; ts?: number; risk?: number }
-export interface MapLayers { fields: boolean; pipelines: boolean; wells: boolean; nps: boolean; tanks: boolean; vehicles: boolean; anomalies: boolean; incidents: boolean; heat: boolean }
-export const DEFAULT_LAYERS: MapLayers = { fields: true, pipelines: true, wells: true, nps: true, tanks: true, vehicles: true, anomalies: true, incidents: true, heat: false }
+export type MarkerKind = 'well' | 'pad' | 'field' | 'nps' | 'tank' | 'vehicle' | 'anomaly' | 'incident' | 'equipment' | 'refinery' | 'terminal'
+export interface MapMarker { id: string; kind: MarkerKind; x: number; y: number; label?: string; score?: number; status?: string; value?: number; ts?: number; risk?: number; major?: boolean; size?: number }
+export interface MapLayers { basemap: boolean; fields: boolean; pipelines: boolean; wells: boolean; nps: boolean; refineries: boolean; terminals: boolean; tanks: boolean; vehicles: boolean; anomalies: boolean; incidents: boolean; heat: boolean }
+export const DEFAULT_LAYERS: MapLayers = { basemap: true, fields: true, pipelines: true, wells: true, nps: true, refineries: true, terminals: true, tanks: true, vehicles: false, anomalies: true, incidents: true, heat: false }
 
-interface Props { markers: MapMarker[]; pipelines: PipelineGeom[]; layers: MapLayers; selected?: string | null; hover?: string | null; onSelect: (id: string | null) => void; onHover?: (id: string | null) => void; onLasso?: (ids: string[]) => void; flyTo?: { x: number; y: number; zoom: number; key: number } | null; ambient: boolean; staleLayer?: { kind: string; text: string } | null; timeOffsetH?: number; wall?: boolean; intro?: boolean; theme?: 'dark' | 'light' }
+interface Props { markers: MapMarker[]; pipelines: PipelineGeom[]; basemap?: Basemap | null; layers: MapLayers; selected?: string | null; hover?: string | null; onSelect: (id: string | null) => void; onHover?: (id: string | null) => void; onLasso?: (ids: string[]) => void; flyTo?: { x: number; y: number; zoom: number; key: number } | null; ambient: boolean; staleLayer?: { kind: string; text: string } | null; timeOffsetH?: number; wall?: boolean; intro?: boolean; theme?: 'dark' | 'light'; home?: { x: number; y: number; z: number } }
 
 interface Cam { x: number; y: number; z: number }
+const FONT = '"Inter Variable", sans-serif'
+const MONO = '"JetBrains Mono Variable", monospace'
 
 export function MapCanvas(p: Props) {
   const ref = useRef<HTMLCanvasElement>(null)
-  const cam = useRef<Cam>({ x: 500, y: 320, z: 1 })
+  const home = p.home || { x: 500, y: 300, z: 1 }
+  const cam = useRef<Cam>({ ...home })
   const target = useRef<Cam | null>(null)
   const flyStart = useRef<{ from: Cam; t0: number; dur: number } | null>(null)
   const particles = useRef<{ p: number; s: number }[][]>([])
@@ -30,8 +35,7 @@ export function MapCanvas(p: Props) {
   const toWorld = (sx: number, sy: number) => { const c = cam.current; const { w, h } = size.current; const k = c.z * (w / 1000); return [(sx - w / 2) / k + c.x, (sy - h / 2) / k + c.y] as [number, number] }
 
   useEffect(() => {
-    // particles per pipeline
-    particles.current = p.pipelines.map(pl => { const n = Math.max(6, Math.round(pl.flow / 90)); return Array.from({ length: n }, (_, i) => ({ p: i / n, s: 0.02 + pl.flow / 60000 })) })
+    particles.current = p.pipelines.map(pl => { const n = Math.max(3, Math.min(14, Math.round(pl.flow / 300))); return Array.from({ length: n }, (_, i) => ({ p: i / n, s: 0.015 + Math.min(0.03, pl.flow / 90000) })) })
   }, [p.pipelines])
 
   useEffect(() => {
@@ -44,7 +48,7 @@ export function MapCanvas(p: Props) {
 
   useEffect(() => {
     const c = ref.current!
-    const onWheel = (e: WheelEvent) => { e.preventDefault(); const [wx, wy] = toWorld(e.offsetX, e.offsetY); const nz = Math.min(8, Math.max(0.3, cam.current.z * (e.deltaY < 0 ? 1.15 : 0.87))); const cc = cam.current; const k = nz / cc.z; cam.current = { x: wx - (wx - cc.x) / k, y: wy - (wy - cc.y) / k, z: nz }; flyStart.current = null }
+    const onWheel = (e: WheelEvent) => { e.preventDefault(); const [wx, wy] = toWorld(e.offsetX, e.offsetY); const nz = Math.min(12, Math.max(0.5, cam.current.z * (e.deltaY < 0 ? 1.15 : 0.87))); const cc = cam.current; const k = nz / cc.z; cam.current = { x: wx - (wx - cc.x) / k, y: wy - (wy - cc.y) / k, z: nz }; flyStart.current = null }
     c.addEventListener('wheel', onWheel, { passive: false })
     return () => c.removeEventListener('wheel', onWheel)
   }, [])
@@ -55,7 +59,8 @@ export function MapCanvas(p: Props) {
     const rm = reducedMotion()
     const fit = () => { const r = c.getBoundingClientRect(); size.current = { w: r.width, h: r.height }; c.width = r.width * devicePixelRatio; c.height = r.height * devicePixelRatio }
     fit(); const ro = new ResizeObserver(fit); ro.observe(c)
-    if (propsRef.current.intro && !rm) { cam.current = { x: 500, y: 320, z: 0.35 }; flyStart.current = { from: { ...cam.current }, t0: performance.now() + 100, dur: 900 }; target.current = { x: 520, y: 320, z: 1 } }
+    const h0 = propsRef.current.home || { x: 500, y: 300, z: 1 }
+    if (propsRef.current.intro && !rm) { cam.current = { x: h0.x, y: h0.y, z: h0.z * 0.7 }; flyStart.current = { from: { ...cam.current }, t0: performance.now() + 100, dur: 900 }; target.current = { ...h0 } }
     const draw = (t: number) => {
       const dt = Math.min(0.05, (t - last) / 1000); last = t
       const now = t
@@ -63,49 +68,55 @@ export function MapCanvas(p: Props) {
       const { w, h } = size.current
       ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0)
       const light = pr.theme === 'light'
-      ctx.fillStyle = light ? '#edeff2' : '#0d1013'; ctx.fillRect(0, 0, w, h)
-      // camera flight (ease-inout)
+      ctx.fillStyle = light ? '#e4e8ec' : '#0f1216'; ctx.fillRect(0, 0, w, h)
       if (flyStart.current && target.current) { const f = flyStart.current; const k = Math.min(1, Math.max(0, (t - f.t0) / f.dur)); const e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2; cam.current = { x: f.from.x + (target.current.x - f.from.x) * e, y: f.from.y + (target.current.y - f.from.y) * e, z: f.from.z + (target.current.z - f.from.z) * e }; if (k >= 1) { flyStart.current = null; target.current = null } }
       const z = cam.current.z * (w / 1000)
-      // grid + coordinates
-      const step = 50 * z
-      const [ox, oy] = toScreen(0, 0)
-      ctx.strokeStyle = light ? 'rgba(28,33,39,0.06)' : 'rgba(246,247,249,0.035)'; ctx.lineWidth = 1; ctx.beginPath()
-      for (let x = ox % step; x < w; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, h) }
-      for (let y = oy % step; y < h; y += step) { ctx.moveTo(0, y); ctx.lineTo(w, y) }
-      ctx.stroke()
-      ctx.fillStyle = light ? 'rgba(28,33,39,0.4)' : 'rgba(171,179,191,0.4)'; ctx.font = `${pr.wall ? 14 : 10}px "JetBrains Mono Variable", monospace`
-      for (let x = ox % (step * 4); x < w; x += step * 4) { const wx = toWorld(x, 0)[0]; ctx.fillText(`${(73 + wx / 400).toFixed(2)}E`, x + 3, 12) }
-      for (let y = oy % (step * 4); y < h; y += step * 4) { const wy = toWorld(0, y)[1]; ctx.fillText(`${(61 + wy / 900).toFixed(2)}N`, 3, y - 3) }
       const stale = pr.staleLayer?.kind
-      // fields
-      if (pr.layers.fields) for (const m of pr.markers) if (m.kind === 'field') { const [sx, sy] = toScreen(m.x, m.y); const r = 62 * z; const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r); g.addColorStop(0, 'rgba(167,139,250,0.16)'); g.addColorStop(1, 'rgba(167,139,250,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(sx, sy, r, r * 0.7, 0, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = 'rgba(167,139,250,0.35)'; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.ellipse(sx, sy, r, r * 0.7, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = light ? '#5c4bb5' : '#c9bfff'; ctx.font = `500 ${(pr.wall ? 20 : 13)}px "Inter Variable", sans-serif`; ctx.fillText(m.label || '', sx - r * 0.5, sy - r * 0.7 - 6) }
-      // pipelines
+      const textCol = light ? '#1c2127' : '#f6f7f9'; const dimCol = light ? '#5f6b7c' : '#8f98a3'
+      // base map: land fill + borders, home country slightly brighter
+      if (pr.layers.basemap && pr.basemap) {
+        const drawRings = (rings: { points: [number, number][] }[], fill: string, stroke: string) => {
+          ctx.fillStyle = fill; ctx.strokeStyle = stroke; ctx.lineWidth = 1
+          for (const r of rings) { ctx.beginPath(); r.points.forEach((q, i) => { const [sx, sy] = toScreen(q[0], q[1]); i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy) }); ctx.closePath(); ctx.fill(); ctx.stroke() }
+        }
+        drawRings(pr.basemap.land, light ? '#eceff2' : '#151a20', light ? '#cfd6dd' : '#232a32')
+        drawRings(pr.basemap.home, light ? '#f4f6f8' : '#1a2027', light ? '#c2cad2' : '#2a323b')
+      }
+      // fields: filled discs sized by production, quiet violet
+      if (pr.layers.fields) for (const m of pr.markers) if (m.kind === 'field') {
+        const [sx, sy] = toScreen(m.x, m.y); if (sx < -60 || sy < -60 || sx > w + 60 || sy > h + 60) continue
+        const r = Math.max(3, (m.size ?? 6) * Math.sqrt(z))
+        ctx.fillStyle = light ? 'rgba(124,106,224,0.22)' : 'rgba(157,139,232,0.22)'; ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill()
+        ctx.strokeStyle = light ? 'rgba(124,106,224,0.7)' : 'rgba(157,139,232,0.7)'; ctx.lineWidth = 1; ctx.stroke()
+        if (m.major || z > 1.6) { ctx.fillStyle = light ? '#4a3fa0' : '#c9bfff'; ctx.font = `500 ${pr.wall ? 16 : 11}px ${FONT}`; ctx.fillText(m.label || '', sx + r + 4, sy + 4) }
+      }
+      // pipelines: one thin line; hot line orange; flow particles only in ambient mode
       if (pr.layers.pipelines) pr.pipelines.forEach((pl, pi) => {
         const pts = pl.points.map(q => toScreen(q[0], q[1]))
-        const pressureColor = pl.hot ? '#ec9a3c' : '#8abbff'
+        const col = pl.hot ? '#ec9a3c' : light ? 'rgba(45,114,210,0.75)' : 'rgba(138,187,255,0.55)'
         ctx.lineJoin = 'round'; ctx.lineCap = 'round'
-        ctx.strokeStyle = light ? 'rgba(45,114,210,0.14)' : 'rgba(76,144,240,0.1)'; ctx.lineWidth = Math.max(6, (pl.flow / 900) * z * 5); ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke()
-        ctx.strokeStyle = light ? 'rgba(45,114,210,0.6)' : 'rgba(138,187,255,0.42)'; ctx.lineWidth = Math.max(1.8, (pl.flow / 900) * z * 1.8); ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke()
+        ctx.strokeStyle = col; ctx.lineWidth = pl.hot ? 2 : Math.max(1, Math.min(2.2, 0.8 + pl.flow / 3000)); ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]))); ctx.stroke()
         if (pr.ambient && !rm) {
           const segs: number[] = []; let total = 0
           for (let i = 1; i < pts.length; i++) { const l = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push(l); total += l }
+          ctx.fillStyle = pl.hot ? '#ffc078' : light ? '#2d72d2' : '#bcd4ff'
           for (const part of particles.current[pi] || []) {
             part.p = (part.p + part.s * dt * 8) % 1
             let d = part.p * total; let i = 0; while (i < segs.length && d > segs[i]) { d -= segs[i]; i++ }
             if (i >= segs.length) continue
             const f = d / segs[i]; const x = pts[i][0] + (pts[i + 1][0] - pts[i][0]) * f; const y = pts[i][1] + (pts[i + 1][1] - pts[i][1]) * f
-            ctx.fillStyle = pressureColor; ctx.shadowColor = pressureColor; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(x, y, Math.max(1.2, 1.8 * z), 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0
+            ctx.beginPath(); ctx.arc(x, y, 1.4, 0, Math.PI * 2); ctx.fill()
           }
         }
-        if (z > 0.9) { const mid = pts[Math.floor(pts.length / 2)]; ctx.fillStyle = light ? '#215db0' : 'rgba(138,187,255,0.8)'; ctx.font = `${pr.wall ? 14 : 11}px "JetBrains Mono Variable", monospace`; ctx.fillText(`${pl.code.split(' «')[0]} · ${pl.flow} ${pl.unit}`, mid[0] + 6, mid[1] - 6) }
+        if (z > 1.8) { const mid = pts[Math.floor(pts.length / 2)]; ctx.fillStyle = dimCol; ctx.font = `${pr.wall ? 13 : 10}px ${MONO}`; ctx.fillText(`${pl.code.split(' «')[0]} · ${pl.flow} ${pl.unit}`, mid[0] + 6, mid[1] - 6) }
       })
       // markers
       const hov = hoverRef.current
       for (const m of pr.markers) {
         if (m.kind === 'field') continue
-        if (m.kind === 'well' && !pr.layers.wells) continue; if (m.kind === 'pad' && !pr.layers.wells) continue
+        if ((m.kind === 'well' || m.kind === 'pad') && !pr.layers.wells) continue
         if (m.kind === 'nps' && !pr.layers.nps) continue; if (m.kind === 'tank' && !pr.layers.tanks) continue; if (m.kind === 'vehicle' && !pr.layers.vehicles) continue
+        if (m.kind === 'refinery' && !pr.layers.refineries) continue; if (m.kind === 'terminal' && !pr.layers.terminals) continue
         if (m.kind === 'anomaly' && !pr.layers.anomalies) continue; if (m.kind === 'incident' && !pr.layers.incidents) continue
         if (pr.timeOffsetH && m.ts && m.ts > Date.now() - pr.timeOffsetH * 3600_000 && (m.kind === 'anomaly' || m.kind === 'incident')) continue
         const [sx, sy] = toScreen(m.x, m.y)
@@ -113,23 +124,34 @@ export function MapCanvas(p: Props) {
         const isStale = stale === m.kind
         const sel = pr.selected === m.id; const hv = hov === m.id
         ctx.globalAlpha = isStale ? 0.45 : 1
-        if (m.kind === 'well') { if (z < 0.6) continue; ctx.fillStyle = m.status === 'в работе' ? (m.value && m.value < 0 ? '#f59e0b' : '#a78bfa') : '#5c6b7a'; ctx.beginPath(); ctx.arc(sx, sy, Math.max(2, 3 * z), 0, Math.PI * 2); ctx.fill(); if (z > 2.2) { ctx.fillStyle = light ? '#334' : '#93a1b0'; ctx.font = '9px "JetBrains Mono Variable", monospace'; ctx.fillText(m.label || '', sx + 4, sy + 3) } }
-        else if (m.kind === 'pad') { ctx.strokeStyle = 'rgba(167,139,250,0.6)'; ctx.lineWidth = 1; ctx.strokeRect(sx - 5 * z, sy - 5 * z, 10 * z, 10 * z) }
-        else if (m.kind === 'tank') { const s = Math.max(4, 6.5 * z); ctx.fillStyle = light ? '#0891b2' : '#22d3ee'; ctx.globalAlpha *= 0.85; ctx.beginPath(); ctx.arc(sx, sy, s, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = isStale ? 0.45 : 1; if (m.value != null) { ctx.strokeStyle = light ? '#0e7490' : '#67e8f9'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(sx, sy, s + 2, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (m.value / 100)); ctx.stroke() } }
-        else if (m.kind === 'nps') { const s = Math.max(8, 14 * z); const col = m.score && m.score > 0.8 ? '#e76a6e' : '#4c90f0'; ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 10; hex(ctx, sx, sy, s); ctx.fill(); ctx.shadowBlur = 0; ctx.font = `600 ${pr.wall ? 22 : 14}px "Inter Variable", sans-serif`; const tw = ctx.measureText(m.label || '').width; ctx.fillStyle = light ? 'rgba(255,255,255,0.8)' : 'rgba(8,13,20,0.75)'; roundRect(ctx, sx + s + 4, sy - 11, tw + 14, 22, 3); ctx.fill(); ctx.fillStyle = light ? '#1c2127' : '#f6f7f9'; ctx.fillText(m.label || '', sx + s + 11, sy + 5); if (m.score && m.score > 0.8) { const born = anomalyBorn.current.get(m.id) ?? (anomalyBorn.current.set(m.id, now), now); const age = now - born; for (let k = 0; k < 2; k++) { const ph = ((age - k * 600) % 1200) / 1200; if (age < 2400 + 1200 && ph >= 0 && !rm) { ctx.strokeStyle = `rgba(239,68,68,${(1 - ph) * 0.9})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sx, sy, s + ph * 40 * z, 0, Math.PI * 2); ctx.stroke() } } ctx.strokeStyle = `rgba(239,68,68,${0.35 + 0.15 * Math.sin(now / 400)})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(sx, sy, s + 5, 0, Math.PI * 2); ctx.stroke() } }
-        else if (m.kind === 'vehicle') { if (z < 0.7) continue; ctx.fillStyle = light ? '#4b5967' : '#93a1b0'; ctx.beginPath(); ctx.moveTo(sx, sy - 4); ctx.lineTo(sx + 4, sy + 3); ctx.lineTo(sx - 4, sy + 3); ctx.closePath(); ctx.fill() }
-        else if (m.kind === 'anomaly') { const r = Math.max(4, (m.score || 0.5) * 12 * z); const born = anomalyBorn.current.get(m.id) ?? (anomalyBorn.current.set(m.id, now), now); const age = now - born; if (!rm && age < 2400) { for (let k = 0; k < 2; k++) { const ph = ((age - k * 600) % 1200) / 1200; if (ph >= 0) { ctx.strokeStyle = `rgba(239,68,68,${(1 - ph) * 0.8})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(sx, sy, r + ph * 30, 0, Math.PI * 2); ctx.stroke() } } } ctx.fillStyle = `rgba(239,68,68,${0.25 + 0.1 * Math.sin(now / 500)})`; ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 1; ctx.stroke() }
-        else if (m.kind === 'incident') { const s = Math.max(4, 6 * z); ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.moveTo(sx, sy - s); ctx.lineTo(sx + s, sy); ctx.lineTo(sx, sy + s); ctx.lineTo(sx - s, sy); ctx.closePath(); ctx.fill() }
-        if (sel || hv) { ctx.strokeStyle = sel ? '#ffffff' : 'rgba(255,255,255,0.6)'; ctx.lineWidth = sel ? 2 : 1; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(sx, sy, 14 * Math.max(0.6, z), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); if (hv && m.kind !== 'nps') { ctx.fillStyle = light ? '#1c2127' : '#f6f7f9'; ctx.font = '500 13px "Inter Variable", sans-serif'; ctx.fillText(m.label || m.id, sx + 14, sy - 12) } }
+        const showLabel = (min: number) => m.major || z > min
+        if (m.kind === 'well') { if (z < 1.2) continue; ctx.fillStyle = m.status === 'в работе' ? (m.value && m.value < 0 ? '#ec9a3c' : '#9d8be8') : '#5c6b7a'; ctx.beginPath(); ctx.arc(sx, sy, Math.max(1.5, 1.6 * z), 0, Math.PI * 2); ctx.fill(); if (z > 3) { ctx.fillStyle = dimCol; ctx.font = `9px ${MONO}`; ctx.fillText(m.label || '', sx + 4, sy + 3) } }
+        else if (m.kind === 'pad') { if (z < 1.2) continue; ctx.strokeStyle = 'rgba(157,139,232,0.6)'; ctx.lineWidth = 1; ctx.strokeRect(sx - 3 * z, sy - 3 * z, 6 * z, 6 * z) }
+        else if (m.kind === 'tank') { if (z < 2) continue; const s = Math.max(3, 2.5 * z); ctx.fillStyle = light ? '#0891b2' : '#22d3ee'; ctx.beginPath(); ctx.arc(sx, sy, s, 0, Math.PI * 2); ctx.fill() }
+        else if (m.kind === 'nps') {
+          const alert = !!(m.score && m.score > 0.8)
+          const s = Math.max(3, (alert ? 5 : 3.5) * Math.sqrt(z))
+          ctx.fillStyle = alert ? '#e76a6e' : light ? '#2d72d2' : '#8abbff'
+          ctx.fillRect(sx - s, sy - s, s * 2, s * 2)
+          if (alert) {
+            const born = anomalyBorn.current.get(m.id) ?? (anomalyBorn.current.set(m.id, now), now); const age = now - born
+            const ph = ((age % 1600) / 1600); if (!rm) { ctx.strokeStyle = `rgba(231,106,110,${(1 - ph) * 0.7})`; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(sx, sy, s + 4 + ph * 18, 0, Math.PI * 2); ctx.stroke() }
+            ctx.strokeStyle = 'rgba(231,106,110,0.9)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(sx, sy, s + 4, 0, Math.PI * 2); ctx.stroke()
+          }
+          if (alert || showLabel(1.6)) { ctx.fillStyle = alert ? textCol : dimCol; ctx.font = `${alert ? 600 : 400} ${pr.wall ? 16 : 11}px ${FONT}`; ctx.fillText(m.label || '', sx + s + 5, sy + 4) }
+        }
+        else if (m.kind === 'refinery') { const s = Math.max(3, 3.4 * Math.sqrt(z)); ctx.fillStyle = light ? '#b07a1f' : 'rgba(236,154,60,0.85)'; ctx.beginPath(); ctx.moveTo(sx, sy - s); ctx.lineTo(sx + s, sy + s * 0.8); ctx.lineTo(sx - s, sy + s * 0.8); ctx.closePath(); ctx.fill(); if (showLabel(1.6)) { ctx.fillStyle = dimCol; ctx.font = `${pr.wall ? 15 : 11}px ${FONT}`; ctx.fillText(m.label || '', sx + s + 4, sy + 4) } }
+        else if (m.kind === 'terminal') { const s = Math.max(3.5, 4 * Math.sqrt(z)); ctx.strokeStyle = light ? '#1c2127' : '#f6f7f9'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(sx, sy, s, 0, Math.PI * 2); ctx.stroke(); ctx.fillStyle = light ? '#1c2127' : '#f6f7f9'; ctx.beginPath(); ctx.arc(sx, sy, s * 0.35, 0, Math.PI * 2); ctx.fill(); if (showLabel(1.2)) { ctx.fillStyle = dimCol; ctx.font = `${pr.wall ? 15 : 11}px ${FONT}`; ctx.fillText(m.label || '', sx + s + 4, sy + 4) } }
+        else if (m.kind === 'vehicle') { if (z < 1.5) continue; ctx.fillStyle = dimCol; ctx.beginPath(); ctx.moveTo(sx, sy - 3); ctx.lineTo(sx + 3, sy + 2.5); ctx.lineTo(sx - 3, sy + 2.5); ctx.closePath(); ctx.fill() }
+        else if (m.kind === 'anomaly') { const r = Math.max(3, (m.score || 0.5) * 6 * Math.sqrt(z)); ctx.fillStyle = 'rgba(231,106,110,0.35)'; ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = '#e76a6e'; ctx.lineWidth = 1; ctx.stroke() }
+        else if (m.kind === 'incident') { const s = Math.max(3, 4 * Math.sqrt(z)); ctx.fillStyle = '#e76a6e'; ctx.beginPath(); ctx.moveTo(sx, sy - s); ctx.lineTo(sx + s, sy); ctx.lineTo(sx, sy + s); ctx.lineTo(sx - s, sy); ctx.closePath(); ctx.fill() }
+        if (sel || hv) { ctx.strokeStyle = sel ? textCol : dimCol; ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(sx, sy, 10 + 2 * Math.sqrt(z), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); if (hv && m.kind !== 'nps' && m.kind !== 'refinery' && m.kind !== 'terminal') { ctx.fillStyle = textCol; ctx.font = `500 12px ${FONT}`; ctx.fillText(m.label || m.id, sx + 14, sy - 12) } }
         ctx.globalAlpha = 1
       }
-      // heat layer (risk)
-      if (pr.layers.heat) for (const m of pr.markers) if (m.risk != null && m.risk > 0.4) { const [sx, sy] = toScreen(m.x, m.y); const r = 40 * z; const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r); g.addColorStop(0, `rgba(239,68,68,${m.risk * 0.35})`); g.addColorStop(1, 'rgba(239,68,68,0)'); ctx.fillStyle = g; ctx.fillRect(sx - r, sy - r, r * 2, r * 2) }
-      // vignette + ambient sweep
-      const vg = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, light ? 'rgba(15,23,42,0.18)' : 'rgba(0,0,0,0.55)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, w, h)
-      
-      if (pr.staleLayer) { ctx.fillStyle = 'rgba(239,68,68,0.9)'; ctx.font = `${pr.wall ? 16 : 11}px "JetBrains Mono Variable", monospace`; ctx.fillText(`⚠ ${pr.staleLayer.text}`, 12, h - 12) }
-      if (pr.timeOffsetH) { ctx.fillStyle = 'rgba(245,158,11,0.9)'; ctx.font = `${pr.wall ? 16 : 11}px "JetBrains Mono Variable", monospace`; ctx.fillText(`◷ состояние −${pr.timeOffsetH} ч`, w - 150, h - 12) }
+      // heat layer (counterparty risk around assets)
+      if (pr.layers.heat) for (const m of pr.markers) if (m.risk != null && m.risk > 0.4) { const [sx, sy] = toScreen(m.x, m.y); const r = 30 * Math.sqrt(z); const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r); g.addColorStop(0, `rgba(231,106,110,${m.risk * 0.35})`); g.addColorStop(1, 'rgba(231,106,110,0)'); ctx.fillStyle = g; ctx.fillRect(sx - r, sy - r, r * 2, r * 2) }
+      if (pr.staleLayer) { ctx.fillStyle = '#e76a6e'; ctx.font = `${pr.wall ? 16 : 11}px ${MONO}`; ctx.fillText(`⚠ ${pr.staleLayer.text}`, 12, h - 12) }
+      if (pr.timeOffsetH) { ctx.fillStyle = '#ec9a3c'; ctx.font = `${pr.wall ? 16 : 11}px ${MONO}`; ctx.fillText(`◷ состояние −${pr.timeOffsetH} ч`, w - 150, h - 12) }
       if (running) raf = requestAnimationFrame(draw)
     }
     raf = requestAnimationFrame(draw)
@@ -139,8 +161,15 @@ export function MapCanvas(p: Props) {
   }, [])
 
   const hit = (sx: number, sy: number): MapMarker | null => {
-    let best: MapMarker | null = null; let bd = 14
-    for (const m of p.markers) { if (m.kind === 'field') continue; const [x, y] = toScreen(m.x, m.y); const d = Math.hypot(x - sx, y - sy); const pri = m.kind === 'nps' ? 0.5 : m.kind === 'anomaly' || m.kind === 'incident' ? 0.6 : 1; if (d * pri < bd) { bd = d * pri; best = m } }
+    let best: MapMarker | null = null; let bd = 12
+    const L = p.layers
+    for (const m of p.markers) {
+      if (m.kind === 'field' && !L.fields) continue
+      if ((m.kind === 'well' || m.kind === 'pad') && (!L.wells || cam.current.z < 1.2)) continue
+      if (m.kind === 'vehicle' && !L.vehicles) continue; if (m.kind === 'tank' && !L.tanks) continue
+      const [x, y] = toScreen(m.x, m.y); const d = Math.hypot(x - sx, y - sy); const pri = m.kind === 'nps' ? 0.6 : m.kind === 'anomaly' || m.kind === 'incident' ? 0.7 : m.kind === 'field' ? 1.3 : 1
+      if (d * pri < bd) { bd = d * pri; best = m }
+    }
     return best
   }
   return (
@@ -155,7 +184,7 @@ export function MapCanvas(p: Props) {
         onMouseUp={e => {
           const d = drag.current; drag.current = null
           if (!d) return
-          if (d.lasso && lasso) { const x0 = Math.min(lasso.x0, lasso.x1), x1 = Math.max(lasso.x0, lasso.x1), y0 = Math.min(lasso.y0, lasso.y1), y1 = Math.max(lasso.y0, lasso.y1); const ids = p.markers.filter(m => m.kind !== 'field' && m.kind !== 'anomaly').filter(m => { const [sx, sy] = toScreen(m.x, m.y); return sx >= x0 && sx <= x1 && sy >= y0 && sy <= y1 }).map(m => m.id); setLasso(null); p.onLasso?.(ids); return }
+          if (d.lasso && lasso) { const x0 = Math.min(lasso.x0, lasso.x1), x1 = Math.max(lasso.x0, lasso.x1), y0 = Math.min(lasso.y0, lasso.y1), y1 = Math.max(lasso.y0, lasso.y1); const ids = p.markers.filter(m => m.kind !== 'anomaly').filter(m => { const [sx, sy] = toScreen(m.x, m.y); return sx >= x0 && sx <= x1 && sy >= y0 && sy <= y1 }).map(m => m.id); setLasso(null); p.onLasso?.(ids); return }
           setLasso(null)
           if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 4) { const m = hit(e.nativeEvent.offsetX, e.nativeEvent.offsetY); p.onSelect(m?.id ?? null) }
         }}
@@ -165,5 +194,3 @@ export function MapCanvas(p: Props) {
     </div>
   )
 }
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath() }
-function hex(ctx: CanvasRenderingContext2D, x: number, y: number, r: number) { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = (Math.PI / 3) * i - Math.PI / 6; const px = x + r * Math.cos(a), py = y + r * Math.sin(a); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py) } ctx.closePath() }

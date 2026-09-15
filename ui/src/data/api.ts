@@ -1,6 +1,6 @@
 // In-browser Object API (spec part 9). Every read passes the PEP: _mk filter before scoring and counting.
 
-import { generateWorld, simNow, type World } from './generator'
+import { generateWorld, simNow, OPEN_SERIES, type World } from './generator'
 import { currentDomainKey, setDomainKey, type DomainKey } from './domain'
 import { TYPES, LINK_BY_TYPE, ACTION_BY_NAME, type ObjectType, type LinkType, type Marking } from './ontology'
 import type { SpObject, SpLink, Session, HistoryEntry, FreshnessInfo, EventItem } from './types'
@@ -260,7 +260,7 @@ export function explain(session: Session, o: SpObject, prop: string): { root: Ex
 }
 function assignLevels(n: ExplainNode, l: number) { n.level = l; for (const c of n.children) assignLevels(c, l + 1) }
 function fileFor(sys: string, r: Rng): string {
-  switch (sys) { case 'sap_pm': case 'sap_mm': case 'sap_sd': case 'sap_hcm': return `raw/sap/${r.pick(['EQUI', 'AUFK', 'EKKO', 'LFA1', 'IFLOT', 'ANLA'])}_2026-09-14T03-00.csv`; case 'onec': case 'onec_toir': case 'onec_zup': return `raw/onec/${r.pick(['kontragenty', 'zayavki', 'oborudovanie'])}_2026-09-14T13-45.json`; case 'egrul': return 'raw/egrul/EGRUL_FULL_2026-09-01.xml'; case 'eis': return 'raw/eis/223fz_notices_2026-09-13.xml'; case 'etp': return 'raw/etp/bids_2026-08.json'; case 'scada': case 'opcua': return 'raw/scada/telemetry_2026-09-14.parquet'; case 'sed': return `raw/sed/directum_export_2026-09-${r.int(10, 14)}.zip`; case 'mail': return 'raw/mail/mailbox_toir@sn-transport_2026-09.mbox'; case 'nlp': return 'enrich/mentions_2026-09-14.parquet'; case 'crm': return 'raw/crm/counterparty_flags_2026-09-14.json'; case 'measurements': return 'raw/prod/daily_measurements_2026-09-14.xlsx'; default: return `raw/${sys}/export_2026-09-14.csv` }
+  switch (sys) { case 'open_ref': return 'raw/open_ref/ru_wikipedia_reference_2026-09-16.csv'; case 'jodi': return 'raw/jodi/world_Primary_CSV_2026-08-19.csv'; case 'eia': return 'raw/eia/RBRTEd_2026-09-16.xls'; case 'volve': return 'raw/volve/Volve_production_data.xlsx'; case 'natural_earth': return 'raw/natural_earth/ne_50m_admin_0_countries.geojson'; case 'sap_pm': case 'sap_mm': case 'sap_sd': case 'sap_hcm': return `raw/sap/${r.pick(['EQUI', 'AUFK', 'EKKO', 'LFA1', 'IFLOT', 'ANLA'])}_2026-09-14T03-00.csv`; case 'onec': case 'onec_toir': case 'onec_zup': return `raw/onec/${r.pick(['kontragenty', 'zayavki', 'oborudovanie'])}_2026-09-14T13-45.json`; case 'egrul': return 'raw/egrul/EGRUL_FULL_2026-09-01.xml'; case 'eis': return 'raw/eis/223fz_notices_2026-09-13.xml'; case 'etp': return 'raw/etp/bids_2026-08.json'; case 'scada': case 'opcua': return 'raw/scada/telemetry_2026-09-14.parquet'; case 'sed': return `raw/sed/directum_export_2026-09-${r.int(10, 14)}.zip`; case 'mail': return 'raw/mail/mailbox_toir@sn-transport_2026-09.mbox'; case 'nlp': return 'enrich/mentions_2026-09-14.parquet'; case 'crm': return 'raw/crm/counterparty_flags_2026-09-14.json'; case 'measurements': return 'raw/prod/daily_measurements_2026-09-14.xlsx'; default: return `raw/${sys}/export_2026-09-14.csv` }
 }
 function rawLine(o: SpObject, prop: string, src: string, r: Rng): string {
   const v = o.props[prop]
@@ -558,12 +558,24 @@ export function kpis(session: Session) {
     cards.push({ key: 'load', label: 'Нагрузка сети', value: load, unit: 'МВт', decimals: 1, sub: `${inWork} из ${units.length} ${d.unitLabelInWork}`, delta: 3.4, target: { screen: 'search' } })
     cards.push({ key: 'flow', label: 'Переток по ВЛ', value: flow, unit: 'МВт', sub: 'суммарно по магистральным ВЛ', tone: 'accent', delta: 1.2, target: { object: n.focusAsset } })
   } else {
-    const debit = units.reduce((a, x) => a + ((x.props.debit as number) || 0), 0)
-    cards.push({ key: 'debit', label: 'Добыча', value: debit, unit: 'т/сут', sub: `${inWork} из ${units.length} ${d.unitLabelInWork}`, delta: -1.8, target: { screen: 'search' } })
-    cards.push({ key: 'flow', label: 'Транспорт', value: flow, unit: 'м³/ч', sub: 'суммарный расход МН', tone: 'accent', delta: 0.6, target: { object: n.focusAsset } })
+    const S = OPEN_SERIES; const MON = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
+    const mlabel = (m: string) => `${MON[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`
+    const nowM = new Date().toISOString().slice(0, 7)
+    const steo = (S as unknown as { steo?: { months: string[]; values: number[]; source: string } | null }).steo
+    if (steo) {
+      const idx = Math.max(0, steo.months.findIndex(m => m >= nowM) - 1); const v = steo.values[idx]; const pv = steo.values[Math.max(0, idx - 12)]
+      cards.push({ key: 'prod', label: 'Добыча нефти РФ', value: v, unit: 'млн барр/сут', decimals: 2, sub: `EIA STEO, ${mlabel(steo.months[idx])} · оценка`, delta: +((v - pv) / pv * 100).toFixed(1), target: { object: n.holding } })
+    } else {
+      const j = S.jodi; const i = j.production_kt.length - 1; const v = (j.production_kt[i] || 0) / 1000; const pv = (j.production_kt[i - 12] || v * 1000) / 1000
+      cards.push({ key: 'prod', label: 'Добыча нефти РФ', value: v, unit: 'млн т/мес', decimals: 2, sub: `JODI, ${mlabel(j.months[i])}`, delta: +((v - pv) / pv * 100).toFixed(1), target: { object: n.holding } })
+    }
+    const j = S.jodi; const ri = j.refinery_intake_kt.length - 1; const rv = (j.refinery_intake_kt[ri] || 0) / 1000; const rpv = (j.refinery_intake_kt[ri - 12] || rv * 1000) / 1000
+    cards.push({ key: 'ref', label: 'Переработка РФ', value: rv, unit: 'млн т/мес', decimals: 1, sub: `JODI, ${mlabel(j.months[ri])} · ${(w.byType.get('Refinery') || []).length} НПЗ в реестре`, delta: +((rv - rpv) / rpv * 100).toFixed(1), target: { screen: 'search' } })
+    const b = S.brent; const bi = b.values.length - 1
+    cards.push({ key: 'brent', label: 'Brent', value: b.values[bi], unit: '$/барр', decimals: 2, sub: `EIA, спот ${b.dates[bi]}`, tone: 'accent', delta: +((b.values[bi] - b.values[bi - 1]) / b.values[bi - 1] * 100).toFixed(1), target: { object: n.holding } })
   }
-  cards.push({ key: 'inc', label: d.incidentsKpi, value: incidents, sub: `открытых, 2 на ${code}`, tone: incidents ? 'danger' : 'ok', delta: 1, deltaAbs: true, target: { object: n.focusIncidents[0] } })
-  cards.push({ key: 'anom', label: 'Аномалии', value: anomalies, sub: 'score > 0.6 за 30 дн', tone: 'warn', delta: 3, deltaAbs: true, target: { object: n.focusAnomaly } })
+  if (d.key === 'energy') cards.push({ key: 'inc', label: d.incidentsKpi, value: incidents, sub: `открытых, 2 на ${code}`, tone: incidents ? 'danger' : 'ok', delta: 1, deltaAbs: true, target: { object: n.focusIncidents[0] } })
+  cards.push({ key: 'anom', label: d.key === 'energy' ? 'Аномалии' : 'Аномалии и инциденты', value: anomalies, sub: d.key === 'energy' ? 'score > 0.6 за 30 дн' : `score > 0.6 · ${incidents} открытых инцидентов, 2 на ${code}`, tone: 'warn', delta: 3, deltaAbs: true, target: { object: n.focusAnomaly } })
   cards.push({ key: 'toir', label: 'ТОиР: открыто', value: openOrders, sub: `${critical} ед. с индексом < 0.4`, delta: -2.4, target: { screen: 'toir' } })
   cards.push({ key: 'cartel', label: 'Закупки: риск', value: cartel, sub: 'cartel_pattern > 0.5', tone: 'warn', delta: 2, deltaAbs: true, target: { screen: 'procurement' } })
   void session

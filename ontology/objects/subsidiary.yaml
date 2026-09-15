@@ -45,7 +45,7 @@ links:
     markings: [INTERNAL]
   - name: operates
     direction: out
-    to: [Field, Pipeline, PumpStation, Tank, GridArea, PowerLine, Substation]
+    to: [Field, Pipeline, PumpStation, Tank, Refinery, Terminal, GridArea, PowerLine, Substation]
     cardinality: "1:N"
     markings: [INTERNAL]
   - name: party_to

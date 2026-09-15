@@ -14,13 +14,14 @@ export type ObjectType =
   | 'Organization' | 'Person' | 'Employee' | 'Contract' | 'Procurement' | 'Bid' | 'Shipment' | 'Vehicle'
   | 'Document' | 'Mention' | 'Report' | 'Purpose'
   | 'GridArea' | 'Substation' | 'PowerLine' | 'LineSegment' | 'Feeder'
+  | 'Refinery' | 'Terminal'
 
 export type LinkType =
   | 'owns' | 'operates' | 'located_on' | 'has_equipment' | 'measured_by' | 'detected_on' | 'maintains' | 'performed_by'
   | 'under_contract' | 'party_to' | 'founder_of' | 'director_of' | 'participated_in' | 'awarded' | 'mentions'
   | 'attached_to' | 'occurred_at' | 'transports' | 'accessed_under' | 'connects' | 'feeds'
 
-export type PropType = 'string' | 'number' | 'money' | 'decimal' | 'enum' | 'date' | 'datetime' | 'bool' | 'geo' | 'text' | 'percent'
+export type PropType = 'string' | 'number' | 'money' | 'decimal' | 'enum' | 'date' | 'datetime' | 'bool' | 'geo' | 'text' | 'percent' | 'year'
 
 export interface PropDef {
   name: string
@@ -99,13 +100,18 @@ export const TYPES: Record<ObjectType, TypeDef> = {
       { name: 'erp', label: 'ERP-система', type: 'string', key: true, sources: ['it_landscape.systems.erp'] },
       { name: 'employees', label: 'Сотрудников', type: 'number', markings: ['HR'] },
     ] }),
-  Field: T({ type: 'Field', label: 'Месторождение', plural: 'Месторождения', prefix: 'fld', version: '1.0.0', owner: 'team-geo', description: 'Месторождение углеводородов', backing: 'gold.field', provenance: 'row', sloSec: 86400, markings: ['CONFIDENTIAL'], sources: ['rosnedra', 'manual'], icon: 'mountain', color: '#9d8be8',
+  Field: T({ type: 'Field', label: 'Месторождение', plural: 'Месторождения', prefix: 'fld', version: '1.1.0', owner: 'team-geo', description: 'Месторождение углеводородов (справочник по открытым данным)', backing: 'gold.field', provenance: 'row', sloSec: 86400 * 30, markings: ['INTERNAL'], sources: ['open_ref', 'rosnedra', 'manual'], icon: 'mountain', color: '#9d8be8',
     props: [
-      { name: 'code', label: 'Код', type: 'string', key: true },
-      { name: 'name', label: 'Название', type: 'string', key: true },
-      { name: 'license', label: 'Лицензионный участок', type: 'string', key: true, markings: ['GEO'] },
-      { name: 'reserves_abc1', label: 'Запасы ABC1', type: 'number', unit: 'тыс. т', markings: ['CONFIDENTIAL', 'GEO'], masking: 'null_for_unauthorized' },
-      { name: 'operator', label: 'Оператор', type: 'string', key: true },
+      { name: 'name', label: 'Название', type: 'string', key: true, sources: ['open_ref.fields.name'] },
+      { name: 'region', label: 'Регион', type: 'string', key: true, sources: ['open_ref.fields.region'] },
+      { name: 'operator', label: 'Оператор', type: 'string', key: true, sources: ['open_ref.fields.operator'] },
+      { name: 'discovered', label: 'Год открытия', type: 'year', key: true, sources: ['open_ref.fields.discovered'] },
+      { name: 'reserves_mt', label: 'Запасы (полные)', type: 'number', unit: 'млн т', key: true, markings: ['GEO'], sources: ['open_ref.fields.reserves_mt'] },
+      { name: 'remaining_mt', label: 'Остаточные извлекаемые', type: 'number', unit: 'млн т', markings: ['GEO'], sources: ['open_ref.fields.remaining_mt'] },
+      { name: 'production_ktd', label: 'Добыча', type: 'number', unit: 'тыс. т/сут', key: true, markings: ['PROD'], sources: ['open_ref.fields.production_ktd'] },
+      { name: 'cumulative_mt', label: 'Накопленная добыча', type: 'number', unit: 'млн т', sources: ['open_ref.fields.cumulative_mt'] },
+      { name: 'data_year', label: 'Год данных', type: 'year', sources: ['open_ref.fields.year'] },
+      { name: 'license', label: 'Лицензионный участок', type: 'string', markings: ['GEO'] },
     ] }),
   LicenseArea: T({ type: 'LicenseArea', label: 'Лицензионный участок', plural: 'Лицензионные участки', prefix: 'lic', version: '1.0.0', owner: 'team-geo', description: 'Лицензия на недропользование', backing: 'gold.license_area', provenance: 'dataset', sloSec: 2592000, markings: ['CONFIDENTIAL'], sources: ['rosnedra'], icon: 'file-badge', color: '#9d8be8',
     props: [ { name: 'number', label: 'Номер лицензии', type: 'string', key: true }, { name: 'valid_to', label: 'Срок', type: 'date', key: true } ] }),
@@ -127,14 +133,18 @@ export const TYPES: Record<ObjectType, TypeDef> = {
       { name: 'diameter', label: 'Диаметр', type: 'number', unit: 'мм', key: true },
       { name: 'length', label: 'Протяжённость', type: 'number', unit: 'км', key: true, markings: ['GEO'] },
       { name: 'design_pressure', label: 'Давление проектное', type: 'number', unit: 'МПа' },
-      { name: 'flow', label: 'Расход', type: 'number', unit: 'м³/ч', live: true, markings: ['PROD'] },
-      { name: 'commissioned', label: 'Год ввода', type: 'number' },
+      { name: 'operator', label: 'Оператор', type: 'string', key: true, sources: ['open_ref.pipelines.operator'] },
+      { name: 'capacity_mt', label: 'Пропускная способность', type: 'number', unit: 'млн т/год', key: true, sources: ['open_ref.pipelines.capacity_mt'] },
+      { name: 'flow', label: 'Прокачка', type: 'number', unit: 'тыс. т/сут', live: true, markings: ['PROD'] },
+      { name: 'commissioned', label: 'Год ввода', type: 'year' },
     ] }),
   PipelineSegment: T({ type: 'PipelineSegment', label: 'Участок', plural: 'Участки', prefix: 'seg', version: '1.0.0', owner: 'team-transport', description: 'Участок трубопровода между километрами', backing: 'gold.pipeline_segment', provenance: 'row', sloSec: 86400, markings: ['CONFIDENTIAL'], sources: ['vtd', 'sap_pm'], icon: 'minus', color: '#8abbff',
     props: [ { name: 'km_from', label: 'Км начала', type: 'number', key: true }, { name: 'km_to', label: 'Км конца', type: 'number', key: true }, { name: 'category', label: 'Категория', type: 'enum', key: true }, { name: 'defects', label: 'Дефекты ВТД', type: 'number', key: true } ] }),
   PumpStation: T({ type: 'PumpStation', label: 'НПС', plural: 'НПС', prefix: 'nps', version: '1.3.0', owner: 'team-transport', description: 'Нефтеперекачивающая станция', backing: 'gold.pump_station', provenance: 'full', sloSec: 30, markings: ['CONFIDENTIAL', 'PROD'], sources: ['scada', 'sap_pm'], icon: 'cog', color: '#4c90f0',
     props: [
       { name: 'code', label: 'Код', type: 'string', key: true, sources: ['sap_pm.iflot.tplnr'] },
+      { name: 'pipeline', label: 'Нефтепровод', type: 'string', key: true, sources: ['open_ref.pipelines.route'] },
+      { name: 'place', label: 'Населённый пункт', type: 'string', markings: ['GEO'], sources: ['open_ref.pipelines.route'] },
       { name: 'capacity', label: 'Мощность', type: 'number', unit: 'м³/ч', key: true },
       { name: 'mode', label: 'Режим', type: 'enum', key: true, live: true, sources: ['scada.nps.mode'] },
       { name: 'pressure_in', label: 'Давление вход', type: 'number', unit: 'МПа', live: true, markings: ['PROD'], sources: ['scada.nps.p_in'] },
@@ -149,6 +159,25 @@ export const TYPES: Record<ObjectType, TypeDef> = {
       { name: 'level', label: 'Уровень', type: 'percent', unit: '%', key: true, live: true, markings: ['PROD'], sources: ['scada.tank.level'] },
       { name: 'product', label: 'Продукт', type: 'enum', key: true },
       { name: 'temperature', label: 'Температура', type: 'number', unit: '°C', live: true, sources: ['scada.tank.temp'] },
+    ] }),
+  Refinery: T({ type: 'Refinery', label: 'НПЗ', plural: 'НПЗ', prefix: 'npz', version: '1.0.0', owner: 'team-refining', description: 'Нефтеперерабатывающий завод (справочник по открытым данным)', backing: 'gold.refinery', provenance: 'row', sloSec: 86400 * 30, markings: ['INTERNAL'], sources: ['open_ref', 'sap_pm'], icon: 'factory', color: '#ec9a3c',
+    props: [
+      { name: 'name', label: 'Название', type: 'string', key: true, sources: ['open_ref.refineries.name'] },
+      { name: 'owner', label: 'Контролирующий акционер', type: 'string', key: true, sources: ['open_ref.refineries.owner'] },
+      { name: 'capacity_mt', label: 'Мощность переработки', type: 'number', unit: 'млн т/год', key: true, sources: ['open_ref.refineries.capacity_mt'] },
+      { name: 'depth', label: 'Глубина переработки', type: 'percent', unit: '%', key: true, sources: ['open_ref.refineries.depth'] },
+      { name: 'region', label: 'Регион', type: 'string', key: true, sources: ['open_ref.refineries.region'] },
+      { name: 'district', label: 'Федеральный округ', type: 'string', sources: ['open_ref.refineries.district'] },
+      { name: 'commissioned', label: 'Год ввода', type: 'year', sources: ['open_ref.refineries.commissioned'] },
+      { name: 'load_pct', label: 'Загрузка', type: 'percent', unit: '%', live: true, markings: ['PROD'], sources: ['scada.refinery.load'] },
+    ] }),
+  Terminal: T({ type: 'Terminal', label: 'Терминал', plural: 'Терминалы', prefix: 'trm', version: '1.0.0', owner: 'team-transport', description: 'Морской нефтеналивной терминал или узел границы', backing: 'gold.terminal', provenance: 'row', sloSec: 3600, markings: ['INTERNAL'], sources: ['open_ref', 'sap_pm'], icon: 'anchor', color: '#f6f7f9',
+    props: [
+      { name: 'name', label: 'Название', type: 'string', key: true, sources: ['open_ref.pipelines.route'] },
+      { name: 'kind', label: 'Тип', type: 'enum', key: true },
+      { name: 'pipeline', label: 'Нефтепровод', type: 'string', key: true, sources: ['open_ref.pipelines.route'] },
+      { name: 'capacity_mt', label: 'Мощность', type: 'number', unit: 'млн т/год', key: true, sources: ['open_ref.pipelines.capacity_mt'] },
+      { name: 'stock_pct', label: 'Заполнение резервуаров', type: 'percent', unit: '%', live: true, markings: ['PROD'], sources: ['scada.terminal.stock'] },
     ] }),
   Equipment: T({ type: 'Equipment', label: 'Оборудование', plural: 'Оборудование', prefix: 'eq', version: '1.3.0', owner: 'team-toir', description: 'Единица оборудования на активе (насос, задвижка, компрессор, ёмкость)', backing: 'gold.equipment', provenance: 'full', sloSec: 900, markings: ['INTERNAL'], sources: ['sap_pm', 'onec_toir', 'passports'], icon: 'wrench', color: '#ec9a3c',
     props: [
@@ -296,7 +325,7 @@ export const TYPES: Record<ObjectType, TypeDef> = {
       { name: 'length', label: 'Протяжённость', type: 'number', unit: 'км', key: true, markings: ['GEO'] },
       { name: 'load_mw', label: 'Переток', type: 'number', unit: 'МВт', live: true, markings: ['PROD'] },
       { name: 'load_pct', label: 'Загрузка', type: 'percent', unit: '%', live: true },
-      { name: 'commissioned', label: 'Год ввода', type: 'number' },
+      { name: 'commissioned', label: 'Год ввода', type: 'year' },
     ] }),
   LineSegment: T({ type: 'LineSegment', label: 'Участок ЛЭП', plural: 'Участки ЛЭП', prefix: 'seg', version: '1.0.0', owner: 'team-grid', description: 'Участок линии между опорами', backing: 'gold.line_segment', provenance: 'row', sloSec: 86400, markings: ['CONFIDENTIAL'], sources: ['vtd', 'sap_pm'], icon: 'minus', color: '#8abbff',
     props: [ { name: 'km_from', label: 'Км начала', type: 'number', key: true }, { name: 'km_to', label: 'Км конца', type: 'number', key: true }, { name: 'towers', label: 'Опор', type: 'number', key: true }, { name: 'defects', label: 'Дефекты обследования', type: 'number', key: true } ] }),
@@ -323,11 +352,11 @@ export const TYPES: Record<ObjectType, TypeDef> = {
 
 export const LINKS: LinkDef[] = [
   { type: 'owns', label: 'владеет', inverseLabel: 'принадлежит', from: ['Holding'], to: ['Subsidiary'], cardinality: '1:N', source: 'ЕГРЮЛ (доля > 50%)', markings: ['INTERNAL'] },
-  { type: 'operates', label: 'эксплуатирует', inverseLabel: 'эксплуатируется', from: ['Subsidiary'], to: ['Field', 'Pipeline', 'PumpStation', 'Tank', 'GridArea', 'PowerLine', 'Substation'], cardinality: '1:N', source: 'Справочники', markings: ['INTERNAL'] },
-  { type: 'located_on', label: 'расположен на', inverseLabel: 'содержит', from: ['Well', 'WellPad', 'Feeder', 'Substation', 'PipelineSegment', 'LineSegment'], to: ['WellPad', 'Field', 'GridArea', 'Substation', 'Pipeline', 'PowerLine'], cardinality: 'N:1', source: 'Справочники', markings: ['GEO'] },
-  { type: 'has_equipment', label: 'имеет оборудование', inverseLabel: 'установлено на', from: ['Well', 'PumpStation', 'Tank', 'PipelineSegment', 'Substation', 'Feeder', 'LineSegment'], to: ['Equipment'], cardinality: '1:N', source: 'SAP PM функциональные места', markings: ['INTERNAL'] },
+  { type: 'operates', label: 'эксплуатирует', inverseLabel: 'эксплуатируется', from: ['Subsidiary'], to: ['Field', 'Pipeline', 'PumpStation', 'Tank', 'Refinery', 'Terminal', 'GridArea', 'PowerLine', 'Substation'], cardinality: '1:N', source: 'Справочники', markings: ['INTERNAL'] },
+  { type: 'located_on', label: 'расположен на', inverseLabel: 'содержит', from: ['Well', 'WellPad', 'Feeder', 'Substation', 'PipelineSegment', 'LineSegment', 'PumpStation', 'Terminal'], to: ['WellPad', 'Field', 'GridArea', 'Substation', 'Pipeline', 'PowerLine'], cardinality: 'N:1', source: 'Справочники', markings: ['GEO'] },
+  { type: 'has_equipment', label: 'имеет оборудование', inverseLabel: 'установлено на', from: ['Well', 'PumpStation', 'Tank', 'PipelineSegment', 'Refinery', 'Terminal', 'Substation', 'Feeder', 'LineSegment'], to: ['Equipment'], cardinality: '1:N', source: 'SAP PM функциональные места', markings: ['INTERNAL'] },
   { type: 'measured_by', label: 'измеряется', inverseLabel: 'измеряет', from: ['Equipment'], to: ['Sensor'], cardinality: '1:N', source: 'Конфигурация SCADA', markings: ['INTERNAL'] },
-  { type: 'detected_on', label: 'обнаружена на', inverseLabel: 'аномалии', from: ['Anomaly'], to: ['Sensor', 'Equipment', 'PumpStation', 'Substation'], cardinality: 'N:1', source: 'ML-пайплайн', markings: ['INTERNAL'] },
+  { type: 'detected_on', label: 'обнаружена на', inverseLabel: 'аномалии', from: ['Anomaly'], to: ['Sensor', 'Equipment', 'PumpStation', 'Refinery', 'Substation'], cardinality: 'N:1', source: 'ML-пайплайн', markings: ['INTERNAL'] },
   { type: 'maintains', label: 'обслуживает', inverseLabel: 'заявки ТОиР', from: ['MaintenanceOrder'], to: ['Equipment'], cardinality: 'N:1', source: 'SAP PM', markings: ['INTERNAL'] },
   { type: 'performed_by', label: 'выполняет', inverseLabel: 'выполняет заявки', from: ['MaintenanceOrder'], to: ['Organization', 'Employee'], cardinality: 'N:1', source: 'SAP PM, 1С', markings: ['INTERNAL'] },
   { type: 'under_contract', label: 'по договору', inverseLabel: 'включает', from: ['MaintenanceOrder', 'Shipment'], to: ['Contract'], cardinality: 'N:1', source: 'SAP, ER по номеру', markings: ['CONFIDENTIAL'] },
@@ -338,10 +367,10 @@ export const LINKS: LinkDef[] = [
   { type: 'awarded', label: 'заключён договор', inverseLabel: 'по закупке', from: ['Procurement'], to: ['Contract'], cardinality: '1:1', source: 'ЕИС', markings: ['CONFIDENTIAL'] },
   { type: 'mentions', label: 'упоминает', inverseLabel: 'упомянут в', from: ['Document'], to: ['Organization', 'Person', 'Contract', 'Equipment'], cardinality: 'N:M', source: 'NLP + ER, confidence', markings: ['INTERNAL'] },
   { type: 'attached_to', label: 'приложен к', inverseLabel: 'документы', from: ['Document'], to: ['Contract', 'Incident', 'MaintenanceOrder'], cardinality: 'N:M', source: 'СЭД', markings: ['INTERNAL'] },
-  { type: 'occurred_at', label: 'произошёл на', inverseLabel: 'инциденты', from: ['Incident'], to: ['Equipment', 'PipelineSegment', 'PumpStation', 'Substation', 'LineSegment', 'Feeder'], cardinality: 'N:1', source: 'Журнал', markings: ['CONFIDENTIAL'] },
+  { type: 'occurred_at', label: 'произошёл на', inverseLabel: 'инциденты', from: ['Incident'], to: ['Equipment', 'PipelineSegment', 'PumpStation', 'Refinery', 'Terminal', 'Substation', 'LineSegment', 'Feeder'], cardinality: 'N:1', source: 'Журнал', markings: ['CONFIDENTIAL'] },
   { type: 'transports', label: 'транспортируется', inverseLabel: 'отгрузки', from: ['Shipment'], to: ['Pipeline', 'Vehicle'], cardinality: 'N:1', source: 'SAP SD, телематика', markings: ['INTERNAL'] },
   { type: 'accessed_under', label: 'доступ под целью', inverseLabel: 'участники', from: ['Employee'], to: ['Purpose'], cardinality: 'N:M', source: 'PBAC', markings: ['INTERNAL'] },
-  { type: 'connects', label: 'соединяет', inverseLabel: 'соединён', from: ['Pipeline', 'PowerLine'], to: ['PumpStation', 'Field', 'Tank', 'Substation', 'GridArea'], cardinality: 'N:M', source: 'Реестр ОПО', markings: ['GEO'] },
+  { type: 'connects', label: 'соединяет', inverseLabel: 'соединён', from: ['Pipeline', 'PowerLine'], to: ['PumpStation', 'Field', 'Tank', 'Refinery', 'Terminal', 'Substation', 'GridArea'], cardinality: 'N:M', source: 'Реестр ОПО', markings: ['GEO'] },
   { type: 'feeds', label: 'питает', inverseLabel: 'питается от', from: ['Substation'], to: ['Substation', 'Feeder', 'GridArea'], cardinality: '1:N', source: 'Схема сети', markings: ['INTERNAL'] },
 ]
 export const LINK_BY_TYPE: Record<string, LinkDef> = Object.fromEntries(LINKS.map(l => [l.type, l]))
@@ -353,7 +382,7 @@ export const ACTIONS: ActionDef[] = [
     params: [ { name: 'kind', label: 'Тип работ', type: 'enum', options: ['Внеплановый ремонт', 'Диагностика', 'ТО-2', 'Замена узла'], required: true, default: 'Диагностика' }, { name: 'priority', label: 'Приоритет', type: 'enum', options: ['Низкий', 'Средний', 'Высокий', 'Критический'], required: true, default: 'Высокий' }, { name: 'planned', label: 'Плановая дата', type: 'date', required: true, default: '2026-09-18' }, { name: 'description', label: 'Описание', type: 'text' } ] },
   { name: 'change_order_priority', label: 'Изменить приоритет заявки', object: ['MaintenanceOrder'], preconditions: ['Статус не «закрыта»'], writeback: 'SAP PM / 1С', risk: 'Низкий', confirmation: 'Автоматически по политике до порога стоимости',
     params: [ { name: 'priority', label: 'Новый приоритет', type: 'enum', options: ['Низкий', 'Средний', 'Высокий', 'Критический'], required: true } ] },
-  { name: 'open_incident', label: 'Открыть инцидент', object: ['PumpStation', 'Equipment', 'Substation'], preconditions: ['Anomaly score > 0.8 или ручной триггер', 'Нет открытого инцидента по объекту'], writeback: 'Журнал инцидентов, СЭД', risk: 'Высокий', confirmation: '2 человека',
+  { name: 'open_incident', label: 'Открыть инцидент', object: ['PumpStation', 'Equipment', 'Refinery', 'Terminal', 'Substation'], preconditions: ['Anomaly score > 0.8 или ручной триггер', 'Нет открытого инцидента по объекту'], writeback: 'Журнал инцидентов, СЭД', risk: 'Высокий', confirmation: '2 человека',
     params: [ { name: 'class', label: 'Класс', type: 'enum', options: ['Отклонение параметров', 'Отказ оборудования', 'Утечка', 'Нарушение режима'], required: true, default: 'Отклонение параметров' }, { name: 'description', label: 'Описание', type: 'text', required: true } ] },
   { name: 'request_documents', label: 'Запросить документы', object: ['Organization', 'Contract'], preconditions: ['Открытая закупка или проверка'], writeback: 'Почта / СЭД: исходящее письмо', risk: 'Низкий', confirmation: '1 человек',
     params: [ { name: 'docs', label: 'Документы', type: 'enum', options: ['Учредительные документы', 'Справка об отсутствии задолженности', 'Подтверждение опыта'], required: true }, { name: 'deadline', label: 'Срок ответа', type: 'date', required: true, default: '2026-09-28' } ] },
@@ -388,5 +417,6 @@ export const SOURCE_LABELS: Record<string, string> = {
   nlp: 'NLP', lims: 'LIMS', glonass: 'ГЛОНАСС', manual: 'Справочник', rosnedra: 'Роснедра', prod_registry: 'Справочник добычи', measurements: 'Замеры',
   opo_registry: 'Реестр ОПО', vtd: 'ВТД', incident_log: 'Журнал инцидентов', passports: 'Паспорта', crm: 'CRM', it_landscape: 'ИТ-ландшафт',
   pbac_registry: 'Реестр PBAC', gas_upravlenie: 'ГАС Управление', hr: 'HR', 'pipelines.anomaly_v3': 'anomaly_v3', askue: 'АСКУЭ',
+  open_ref: 'Открытые справочники', jodi: 'JODI-Oil', eia: 'EIA', volve: 'Volve (Equinor)', natural_earth: 'Natural Earth',
 }
 export const srcLabel = (s: string) => SOURCE_LABELS[s] || SOURCE_LABELS[s.split('.')[0]] || s

@@ -40,7 +40,7 @@ links:
     markings: [INTERNAL]
   - name: located_on
     direction: in
-    to: [Well, WellPad, Feeder, Substation, PipelineSegment, LineSegment]
+    to: [Well, WellPad, Feeder, Substation, PipelineSegment, LineSegment, PumpStation, Terminal]
     cardinality: "N:1"
     markings: [GEO]
   - name: connects

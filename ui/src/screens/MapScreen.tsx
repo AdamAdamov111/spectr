@@ -14,7 +14,7 @@ export function MapScreen() {
   const ambient = useStore(s => s.settings.ambient); const theme = useStore(s => s.settings.theme); const chaos = useStore(s => s.chaos)
   const mapFocus = useStore(s => s.mapFocus)
   const selected = useStore(s => s.inspector.objectId)
-  const [layers, setLayers] = useState<MapLayers>({ ...DEFAULT_LAYERS })
+  const [layers, setLayers] = useState<MapLayers>({ ...DEFAULT_LAYERS, wells: true, vehicles: false })
   const [tickKey, setTick] = useState(0); const [offset, setOffset] = useState(0); const [q, setQ] = useState(''); const [hover, setHover] = useState<string | null>(null)
   const [fly, setFly] = useState<{ x: number; y: number; zoom: number; key: number } | null>(null)
   useEffect(() => { const id = setInterval(() => setTick(x => x + 1), 5000); return () => clearInterval(id) }, [])
@@ -28,7 +28,7 @@ export function MapScreen() {
       <div className="screen-h"><span className="screen-title">Карта активов</span><input className="input" style={{ width: 260 }} placeholder="Найти актив на карте…" value={q} onChange={e => setQ(e.target.value)} />{found.length > 0 && <div className="map-found">{found.map(o => <ObjectChip key={o.id} o={o} compact onOpen={x => { setFly({ x: x.geo![0], y: x.geo![1], zoom: 3.2, key: Date.now() }); openObject(x.id); setQ('') }} />)}</div>}<span className="grow" /><span className="dim mono" style={{ fontSize: 11 }}>векторные тайлы офлайн · deck.gl слои · схематическая проекция стенда</span></div>
       <div className="screen-b">
         <div className="situ-map" style={{ flex: 1 }}>
-          <MapCanvas markers={riskMarkers} pipelines={w.pipelines} layers={layers} selected={selected} hover={hover} onHover={setHover} onSelect={id => id && openObject(id)} onLasso={ids => inspect({ open: true, mode: 'summary', summaryIds: ids })} flyTo={fly} ambient={ambient} theme={theme} timeOffsetH={offset} staleLayer={chaos.sapStale ? { kind: 'well', text: 'Источник SAP-реплика молчит 14 мин (SLO 15 мин)' } : null} />
+          <MapCanvas markers={riskMarkers} pipelines={w.pipelines} basemap={w.basemap} home={w.home} layers={layers} selected={selected} hover={hover} onHover={setHover} onSelect={id => id && openObject(id)} onLasso={ids => inspect({ open: true, mode: 'summary', summaryIds: ids })} flyTo={fly} ambient={ambient} theme={theme} timeOffsetH={offset} staleLayer={chaos.sapStale ? { kind: 'well', text: 'Источник SAP-реплика молчит 14 мин (SLO 15 мин)' } : null} />
           <div className="timeline"><span className="mono dim" style={{ fontSize: 10 }}>−24 ч</span><input type="range" min={0} max={24} value={24 - offset} onChange={e => setOffset(24 - Number(e.target.value))} aria-label="Таймлайн" /><span className="mono" style={{ fontSize: 10, color: offset ? 'var(--sp-warn)' : 'var(--sp-text-2)' }}>{offset ? `−${offset} ч` : 'сейчас'}</span></div>
           {hover && (() => { const o = getObject(hover); return o ? <div className="map-tip">{TYPES[o.type].label} · <b>{o.label}</b></div> : null })()}
         </div>

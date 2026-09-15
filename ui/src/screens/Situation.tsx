@@ -16,10 +16,12 @@ export function useMarkers(session: ReturnType<typeof useSimulatedSession>, tick
     const isHub = (o: { type: string; props: Record<string, unknown> }) => o.type === 'PumpStation' || (o.type === 'Substation' && o.props.voltage_kv === 220)
     const isDist = (o: { type: string; props: Record<string, unknown> }) => o.type === 'Tank' || (o.type === 'Substation' && o.props.voltage_kv === 110)
     const isPad = (o: { type: string; props: Record<string, unknown> }) => o.type === 'WellPad' || (o.type === 'Substation' && o.props.voltage_kv === 35)
-    for (const f of w.byType.get(d.areaType) || []) if (f.geo) push({ id: f.id, kind: 'field', x: f.geo[0], y: f.geo[1], label: f.label })
+    for (const f of w.byType.get(d.areaType) || []) if (f.geo) push({ id: f.id, kind: 'field', x: f.geo[0], y: f.geo[1], label: f.label, size: d.key === 'oilgas' ? 2.5 + Math.sqrt((f.props.production_ktd as number) || 4) * 1.1 : 6, major: !!f.props._major })
+    for (const r of w.byType.get('Refinery') || []) if (r.geo) push({ id: r.id, kind: 'refinery', x: r.geo[0], y: r.geo[1], label: r.label, value: r.props.load_pct as number })
+    for (const t of w.byType.get('Terminal') || []) if (t.geo && canSee(session, t)) push({ id: t.id, kind: 'terminal', x: t.geo[0], y: t.geo[1], label: String(t.props.name).replace('Порт ', ''), major: t.props.kind === 'морской терминал' })
     for (const t of [...(w.byType.get('WellPad') || []), ...(w.byType.get('Substation') || [])]) if (t.geo && isPad(t)) push({ id: t.id, kind: 'pad', x: t.geo[0], y: t.geo[1], label: t.label })
     for (const wl of w.byType.get(d.unitType) || []) if (wl.geo && canSee(session, wl)) push({ id: wl.id, kind: 'well', x: wl.geo[0], y: wl.geo[1], label: wl.label, status: wl.props.status === 'в работе' || wl.props.status === 'под нагрузкой' ? 'в работе' : String(wl.props.status), value: d.key === 'energy' ? -(wl.props.trend_30d as number) : (wl.props.trend_30d as number) })
-    for (const n of [...(w.byType.get('PumpStation') || []), ...(w.byType.get('Substation') || [])]) if (n.geo && isHub(n)) push({ id: n.id, kind: 'nps', x: n.geo[0], y: n.geo[1], label: String(n.props.code), score: n.props[d.focusProp] as number })
+    for (const n of [...(w.byType.get('PumpStation') || []), ...(w.byType.get('Substation') || [])]) if (n.geo && isHub(n)) push({ id: n.id, kind: 'nps', x: n.geo[0], y: n.geo[1], label: String(n.props.code).replace(/^НПС · /, ''), score: n.props[d.focusProp] as number })
     for (const t of [...(w.byType.get('Tank') || []), ...(w.byType.get('Substation') || [])]) if (t.geo && isDist(t)) push({ id: t.id, kind: 'tank', x: t.geo[0], y: t.geo[1], label: t.label, value: canSee(session, t) ? ((t.props.level ?? t.props.load_pct) as number) : undefined })
     for (const v of w.byType.get('Vehicle') || []) if (v.geo) push({ id: v.id, kind: 'vehicle', x: v.geo[0], y: v.geo[1], label: v.label })
     for (const a of w.byType.get('Anomaly') || []) { if (a.id === w.named.focusAnomaly) continue; if ((a.props.score as number) < 0.7) continue; const host = neighbors(session, a.id, { types: ['detected_on'] }).map(x => x.other).find(x => x.geo); if (host?.geo) push({ id: a.id, kind: 'anomaly', x: host.geo[0] + 3, y: host.geo[1] - 3, label: a.label, score: a.props.score as number, ts: a.created }) }
@@ -50,7 +52,7 @@ export function Situation() {
   return (
     <div className="screen situation">
       <div className="situ-map">
-        <MapCanvas markers={markers} pipelines={w.pipelines} layers={DEFAULT_LAYERS} selected={selected} hover={hover} onHover={setHover} onSelect={id => id && openObject(id)} onLasso={ids => inspect({ open: true, mode: 'summary', summaryIds: ids })} ambient={ambient} intro={!flyDone} theme={theme} timeOffsetH={offset} staleLayer={chaos.sapStale ? { kind: 'well', text: 'Источник SAP-реплика молчит 14 мин (SLO 15 мин) — слой скважин устарел' } : null} />
+        <MapCanvas markers={markers} pipelines={w.pipelines} basemap={w.basemap} home={w.home} layers={DEFAULT_LAYERS} selected={selected} hover={hover} onHover={setHover} onSelect={id => id && openObject(id)} onLasso={ids => inspect({ open: true, mode: 'summary', summaryIds: ids })} ambient={ambient} intro={!flyDone} theme={theme} timeOffsetH={offset} staleLayer={chaos.sapStale ? { kind: 'well', text: 'Источник SAP-реплика молчит 14 мин (SLO 15 мин) — слой скважин устарел' } : null} />
         <div className="map-legend legend">{w.domain.legend.map(l => <span key={l.label}><i style={{ background: l.color }} />{l.label}</span>)}</div>
         <div className="timeline">
           <span className="mono dim" style={{ fontSize: 10 }}>−24 ч</span>

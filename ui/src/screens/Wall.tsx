@@ -23,7 +23,7 @@ export function Wall() {
   const incidents = (w.byType.get('Incident') || []).filter(i => i.props.status !== 'закрыт').slice(0, 6)
   return (
     <div className="wall">
-      <div className="wall-map"><MapCanvas markers={markers} pipelines={w.pipelines} layers={{ ...DEFAULT_LAYERS, vehicles: true }} onSelect={() => {}} ambient theme="dark" wall />
+      <div className="wall-map"><MapCanvas markers={markers} pipelines={w.pipelines} basemap={w.basemap} home={w.home} layers={{ ...DEFAULT_LAYERS }} onSelect={() => {}} ambient theme="dark" wall />
         <div className="wall-corner"><span className="mono">{pad(clock.getHours())}:{pad(clock.getMinutes())}:{pad(clock.getSeconds())}</span><span className="dim">{w.domain.holding} · СЦ · онтология v{ONTOLOGY_VERSION} · цель situation_wall · INTERNAL</span></div>
       </div>
       <div className="wall-side">

@@ -90,6 +90,7 @@ export function formatProp(v: unknown, t?: string, unit?: string): string {
   if (v == null || v === '') return '—'
   if (t === 'money' && typeof v === 'number') return fmtMoney(v)
   if (t === 'bool') return v ? 'да' : 'нет'
+  if (t === 'year') return String(v)
   if (t === 'percent' && typeof v === 'number') return `${fmtNum(v, 1)} %`
   if (t === 'decimal' && typeof v === 'number') return v.toFixed(2)
   if (typeof v === 'number') return `${fmtNum(v, Number.isInteger(v) ? 0 : 1)}${unit ? ' ' + unit : ''}`

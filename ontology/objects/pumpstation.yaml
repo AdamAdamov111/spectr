@@ -15,6 +15,16 @@ properties:
     type: string
     sources: [sap_pm.iflot.tplnr]
     key: true
+  - name: pipeline
+    label: Нефтепровод
+    type: string
+    sources: [open_ref.pipelines.route]
+    key: true
+  - name: place
+    label: Населённый пункт
+    type: string
+    markings: [GEO]
+    sources: [open_ref.pipelines.route]
   - name: capacity
     label: Мощность
     type: number
@@ -56,6 +66,11 @@ links:
     to: [Subsidiary]
     cardinality: "1:N"
     markings: [INTERNAL]
+  - name: located_on
+    direction: out
+    to: [WellPad, Field, GridArea, Substation, Pipeline, PowerLine]
+    cardinality: "N:1"
+    markings: [GEO]
   - name: has_equipment
     direction: out
     to: [Equipment]

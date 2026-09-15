@@ -39,7 +39,7 @@ links:
     markings: [INTERNAL]
   - name: occurred_at
     direction: out
-    to: [Equipment, PipelineSegment, PumpStation, Substation, LineSegment, Feeder]
+    to: [Equipment, PipelineSegment, PumpStation, Refinery, Terminal, Substation, LineSegment, Feeder]
     cardinality: "N:1"
     markings: [CONFIDENTIAL]
 actions: []

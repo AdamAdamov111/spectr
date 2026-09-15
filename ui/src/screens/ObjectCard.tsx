@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { ExternalLink, Map as MapIcon, Share2, Zap, ChevronRight } from 'lucide-react'
 import { get as getObject, neighbors, linkCounts, history, audit, subscribeWorkflows, allWorkflows, traverse } from '../data/api'
 import { TYPES, ACTIONS, LINK_BY_TYPE, srcLabel, type PropDef } from '../data/ontology'
@@ -10,7 +10,8 @@ import { ForceGraph, type GNode, type GLink } from '../graph/ForceGraph'
 import { fmtDateTime, fmtAgo } from '../data/rng'
 import type { SpObject } from '../data/types'
 
-type TabKey = 'props' | 'links' | 'history' | 'docs' | 'actions' | 'explain' | 'audit'
+type TabKey = 'props' | 'series' | 'links' | 'history' | 'docs' | 'actions' | 'explain' | 'audit'
+const SeriesChart = lazy(() => import('../components/SeriesChart'))
 const SRC_BADGE: Record<string, string> = { sap_pm: 'SAP', sap_mm: 'SAP', sap_sd: 'SAP', sap_hcm: 'SAP', onec: '1С', onec_toir: '1С', onec_zup: '1С', egrul: 'ЕГРЮЛ', eis: 'ЕИС', etp: 'ЭТП', scada: 'SCADA', opcua: 'OPC UA', sed: 'СЭД', mail: 'ПОЧТА', passports: 'ПАСПОРТ', nlp: 'NLP', lims: 'LIMS', glonass: 'ГЛОНАСС', manual: 'СПРАВ.', rosnedra: 'РОСНЕДРА', prod_registry: 'ДОБЫЧА', measurements: 'ЗАМЕРЫ', historian: 'HIST', 'pipelines.anomaly_v3': 'ML', incident_log: 'ЖУРНАЛ', vtd: 'ВТД', opo_registry: 'ОПО', it_landscape: 'ИТ', pbac_registry: 'PBAC', crm: 'CRM', hr: 'HR', mail_: 'MAIL' }
 
 export function ObjectCard({ id, compact }: { id: string; compact?: boolean }) {
@@ -61,10 +62,11 @@ export function ObjectCard({ id, compact }: { id: string; compact?: boolean }) {
         {merged && <div className="er-banner">⧉ Golden-объект собран Entity Resolution из {o.sources.length} источников · <button className="link" onClick={() => setTab('history')}>история слияний</button></div>}
       </header>
       <div className="tabs">
-        {([['props', 'Свойства', def.props.length], ['links', 'Связи', linksN], ['history', 'История', hist.length], ['docs', 'Документы', docsN], ['actions', 'Действия', actions.length], ['explain', 'Explain', null], ['audit', 'Аудит', auditN]] as [TabKey, string, number | null][]).map(([k, l, n]) => <button key={k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}>{l}{n != null && <span className="n">{n}</span>}</button>)}
+        {([['props', 'Свойства', def.props.length], ...(o.series?.length ? [['series', 'Динамика', o.series.length]] : []), ['links', 'Связи', linksN], ['history', 'История', hist.length], ['docs', 'Документы', docsN], ['actions', 'Действия', actions.length], ['explain', 'Explain', null], ['audit', 'Аудит', auditN]] as [TabKey, string, number | null][]).map(([k, l, n]) => <button key={k} className={tab === k ? 'active' : ''} onClick={() => setTab(k)}>{l}{n != null && <span className="n">{n}</span>}</button>)}
       </div>
       <div className="objcard-b xfade" key={tab}>
         {tab === 'props' && <PropsTab o={o} compact={compact} />}
+        {tab === 'series' && o.series && <Suspense fallback={<div className="dim" style={{ padding: 16 }}>загрузка графика…</div>}><SeriesChart series={o.series} /></Suspense>}
         {tab === 'links' && <LinksTab o={o} compact={compact} />}
         {tab === 'history' && <div className="tl">{hist.map((h, i) => <div key={h.version} className={`tl-item ${h.causeKind}`} style={{ animationDelay: `${i * 30}ms` }}><div className="row"><b>v{h.version}</b><span className="dim mono" style={{ fontSize: 11 }}>{fmtDateTime(h.ts)}</span><span className={`pill ${h.causeKind === 'action' ? 'accent' : ''}`} style={{ fontSize: 10 }}>{h.causeKind === 'action' ? '⚡ ' : h.causeKind === 'er' ? '⧉ ' : '⟲ '}{h.cause}{h.actor ? ` · ${h.actor}` : ''}</span></div><div className="diff" style={{ marginTop: 4 }}>{h.diff.map(d => <div key={d.prop}><span className="dim">{d.prop}: </span><span className="del">{String(d.before ?? '∅')}</span> → <span className="add">{String(d.after ?? '∅')}</span></div>)}</div></div>)}</div>}
         {tab === 'docs' && <DocsTab o={o} />}

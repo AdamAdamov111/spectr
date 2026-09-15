@@ -15,7 +15,7 @@ export function AgentScreen() {
   const bottom = useRef<HTMLDivElement>(null); const seq = useRef(1)
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
   const rm = reducedMotion()
-  const SUGGEST = world().domain.agentSuggest
+  const SUGGEST = world().domain.agentSuggest.map(t => t.replace('{focus}', String(getObject(world().named.focusAsset)?.props.code)).replace('{equipment}', String(getObject(world().named.focusEquipment)?.label)))
   async function ask(text: string) {
     if (!text.trim() || busy) return
     setQ(''); setBusy(true)

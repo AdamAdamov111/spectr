@@ -8,6 +8,16 @@ import type { SpObject, SpLink, EventItem, HistoryEntry, PropMeta } from './type
 import type { ObjectType, LinkType, Marking } from './ontology'
 import { TYPES } from './ontology'
 import { DOMAINS, type DomainKey, type DomainSpec } from './domain'
+import { project, projectBasemap, type Basemap } from '../map/geo'
+import fieldsJson from './real/fields.json'
+import refineriesJson from './real/refineries.json'
+import pipelinesJson from './real/pipelines.json'
+import seriesJson from './real/series.json'
+import volveJson from './real/volve.json'
+import basemapJson from './real/basemap.json'
+
+export const OPEN_SERIES = seriesJson
+export const REAL_DATA_DATE = '2026-09-16'
 
 export const SIM_EPOCH = Date.UTC(2026, 8, 14, 11, 2, 11) // 14.09.2026 14:02:11 MSK
 const LOAD_TIME = Date.now()
@@ -25,6 +35,8 @@ export interface Named {
 
 export interface World {
   domain: DomainSpec
+  basemap: Basemap | null
+  home: { x: number; y: number; z: number }
   objects: Map<string, SpObject>
   byType: Map<ObjectType, SpObject[]>
   links: SpLink[]
@@ -127,91 +139,121 @@ export function generateWorld(seed = 2026, scale = 1, domainKey: DomainKey = 'oi
   })
   const [dzoA, dzoB, dzoC] = dzo // production/transmission · transport/distribution · processing/generation
 
-  // ---------- Asset layer: oil & gas ----------
+  // ---------- Asset layer: oil & gas — real public assets (open data), synthetic operations on top ----------
+  let basemap: Basemap | null = null
+  let home = { x: 500, y: 300, z: 1 }
   function buildOilGas(): AssetLayer {
-    const fieldDefs = [
-      { code: 'ЮГ-1', name: 'Южно-Пуровское', geo: [150, 130] as [number, number], reserves: 48200 },
-      { code: 'СВ-2', name: 'Северо-Варьёганское', geo: [310, 80] as [number, number], reserves: 31900 },
-      { code: 'ТГ-3', name: 'Тагульское', geo: [430, 170] as [number, number], reserves: 27400 },
-      { code: 'ЛН-4', name: 'Ленское', geo: [220, 280] as [number, number], reserves: 19800 },
-    ]
-    const fields: SpObject[] = []; const wells: SpObject[] = []
-    let wellNo = 1
-    const declining = new Set<number>()
-    while (declining.size < Math.max(1, Math.round(8 * scale))) declining.add(rng.int(0, N.units - 1))
-    for (const f of fieldDefs) {
-      const fo = add('Field', f.name, { code: f.code, name: `${f.name} месторождение`, license: `ХМН ${rng.int(10000, 19999)} НЭ`, reserves_abc1: f.reserves, operator: `АО «${dzoA.label}»` }, { geo: f.geo, subsidiary: dzoA.id, sources: ['rosnedra', 'manual'], version: 2, meta: { reserves_abc1: metaSrc('rosnedra.balance.abc1', 86400 * 30) } })
+    basemap = projectBasemap(basemapJson.countries as unknown as { iso: string; rings: [number, number][][] }[], 'RU')
+    const openMeta = (col: string): PropMeta => ({ source: `open_ref.${col}`, sourceTs: Date.UTC(2026, 8, 16) })
+    // fields (ru.wikipedia reference list + GeoData coordinates)
+    const fields: SpObject[] = []
+    const byProd = [...fieldsJson].sort((x, y) => (y.production_ktd || 0) - (x.production_ktd || 0))
+    const major = new Set(byProd.slice(0, 4).map(f => f.name))
+    for (const f of fieldsJson) {
+      const geo = project(f.lon, f.lat)
+      const fo = add('Field', f.name.replace(/^проект /, '').split(' (')[0], { name: `${f.name} месторождение`, region: f.region || '—', operator: f.operator || '—', discovered: f.discovered, reserves_mt: f.reserves_mt, remaining_mt: f.remaining_mt, production_ktd: f.production_ktd, cumulative_mt: f.cumulative_mt, data_year: f.production_year ?? f.remaining_year ?? f.cumulative_year, license: `${f.region || ''} · ${f.geo_source === 'wikipedia' ? 'координаты Wikipedia' : 'координаты приближённые'}`, _major: major.has(f.name) }, { geo, subsidiary: dzoA.id, sources: ['open_ref'], markings: ['INTERNAL'], version: 1, materializedAt: NOW - 3 * DAY, meta: { name: openMeta('fields.name'), operator: openMeta('fields.operator'), discovered: openMeta('fields.discovered'), reserves_mt: openMeta('fields.reserves_mt'), remaining_mt: openMeta('fields.remaining_mt'), production_ktd: openMeta('fields.production_ktd'), cumulative_mt: openMeta('fields.cumulative_mt'), region: openMeta('fields.region') } })
       fields.push(fo)
       link('operates', dzoA.id, fo.id, { source: 'manual' })
-      const padCount = 5
-      for (let p = 0; p < padCount; p++) {
-        const ang = (p / padCount) * Math.PI * 2 + rng.float(-0.3, 0.3); const r = rng.float(28, 52)
-        const geo: [number, number] = [f.geo[0] + Math.cos(ang) * r, f.geo[1] + Math.sin(ang) * r * 0.7]
-        const wellsHere = Math.max(1, Math.round(N.units / (fieldDefs.length * padCount)))
-        const pad = add('WellPad', `Куст ${f.code}-${p + 1}`, { code: `${f.code}-К${p + 1}`, wells: wellsHere, coords: `${(61 + geo[1] / 900).toFixed(4)}, ${(73 + geo[0] / 400).toFixed(4)}` }, { geo, subsidiary: dzoA.id, sources: ['manual'] })
-        link('located_on', pad.id, fo.id, { source: 'manual', markings: ['GEO'] })
-        for (let w = 0; w < wellsHere && wells.length < N.units; w++) {
-          const idx = wells.length
-          const wang = rng.float(0, Math.PI * 2); const wr = rng.float(6, 16)
-          const wgeo: [number, number] = [geo[0] + Math.cos(wang) * wr, geo[1] + Math.sin(wang) * wr * 0.7]
-          const kind = rng.chance(0.8) ? 'добывающая' : 'нагнетательная'
-          const status = rng.chance(0.86) ? 'в работе' : rng.chance(0.5) ? 'в ремонте' : 'в бездействии'
-          const base = rng.float(18, 140)
-          const decl = declining.has(idx)
-          const debit = kind === 'добывающая' && status === 'в работе' ? +(base * (decl ? 0.62 : 1)).toFixed(1) : 0
-          const wo = add('Well', `Скв. ${wellNo}`, { number: String(wellNo), kind, status, debit, water_cut: +rng.float(12, 78).toFixed(1), commissioned: fmtD(NOW - rng.int(400, 9000) * DAY), trend_30d: decl ? +rng.float(-31, -18).toFixed(1) : +rng.float(-3, 2.5).toFixed(1) }, { geo: wgeo, subsidiary: dzoA.id, sources: ['prod_registry', 'measurements', 'sap_pm'], meta: { debit: metaSrc('measurements.daily.debit', 900), status: metaSrc('prod_registry.wells.status', 3600) } })
-          wellNo++
-          wells.push(wo)
-          link('located_on', wo.id, pad.id, { source: 'manual', markings: ['GEO'] })
-        }
-      }
     }
-    const nps1 = add('PumpStation', 'НПС-1', { code: 'НПС-1', capacity: 4200, mode: 'номинальный', pressure_in: 2.31, pressure_out: 5.84, pressure_anomaly_score: 0.06, open_incidents: 0 }, { id: 'nps_01J8SN000000000000000NPS01', geo: [540, 300], subsidiary: dzoB.id, sources: ['scada', 'sap_pm'], version: 812, materializedAt: NOW - 4000, meta: { pressure_in: metaSrc('scada.nps1.p_in', 6), pressure_out: metaSrc('scada.nps1.p_out', 6), mode: metaSrc('scada.nps1.mode', 6), pressure_anomaly_score: { derived_by: 'pipelines.anomaly_v3@3.2.1', sourceTs: NOW - 40000 } } })
-    const nps2 = add('PumpStation', 'НПС-2', { code: 'НПС-2', capacity: 3800, mode: 'повышенное давление', pressure_in: 2.74, pressure_out: 6.92, pressure_anomaly_score: 0.87, open_incidents: 2 }, { id: 'nps_01J8SN000000000000000NPS02', geo: [700, 385], subsidiary: dzoB.id, sources: ['scada', 'sap_pm'], version: 1204, materializedAt: NOW - 3000, meta: { pressure_in: metaSrc('scada.nps2.p_in', 5), pressure_out: metaSrc('scada.nps2.p_out', 5), mode: metaSrc('scada.nps2.mode', 5), pressure_anomaly_score: { derived_by: 'pipelines.anomaly_v3@3.2.1', sourceTs: NOW - 52000, rawRid: 'raw_scada_telemetry:88412' } } })
-    link('operates', dzoB.id, nps1.id, { source: 'manual' }); link('operates', dzoB.id, nps2.id, { source: 'manual' })
-    const tanks: SpObject[] = []
-    const farm: [number, number] = [870, 480]
-    for (let i = 0; i < 18; i++) {
-      const col = i % 6, row = Math.floor(i / 6)
-      const geo: [number, number] = [farm[0] - 45 + col * 18, farm[1] - 20 + row * 20]
-      const t = add('Tank', `РВС-${20000 + (i + 1) * 100}`, { code: `РВС-${i + 1}`, volume: rng.pick([10000, 20000, 30000, 50000]), level: +rng.float(22, 88).toFixed(1), product: rng.pick(['нефть', 'нефть', 'ДТ', 'бензин АИ-92', 'мазут']), temperature: +rng.float(8, 24).toFixed(1) }, { geo, subsidiary: dzoC.id, sources: ['scada', 'lims'], version: rng.int(200, 900), materializedAt: NOW - rng.int(2, 50) * 1000, meta: { level: metaSrc('scada.tank.level', 30), temperature: metaSrc('scada.tank.temp', 30) } })
-      tanks.push(t)
-      link('operates', dzoC.id, t.id, { source: 'manual' })
+    // Volve reference wells (Equinor open data): real monthly production and bottom-hole pressure, no map position (North Sea)
+    const volveField = add('Field', 'Volve (эталон, Северное море)', { name: 'Volve — эталонный набор Equinor (открытая лицензия)', region: 'Северное море, Норвегия', operator: 'Equinor (2008–2016)', discovered: 1993, reserves_mt: null, remaining_mt: null, production_ktd: null, cumulative_mt: 10.9, data_year: 2016, license: 'Equinor Open Data Licence' }, { subsidiary: dzoA.id, sources: ['volve'], markings: ['INTERNAL'], version: 1, materializedAt: NOW - 3 * DAY })
+    const volvePad = add('WellPad', 'Платформа Maersk Inspirer (Volve)', { code: 'VOLVE-A', wells: volveJson.wells.length, coords: '58.44 N, 1.89 E' }, { subsidiary: dzoA.id, sources: ['volve'], markings: ['INTERNAL'] })
+    link('located_on', volvePad.id, volveField.id, { source: 'volve', markings: ['GEO'] })
+    const wells: SpObject[] = []
+    for (const vw of volveJson.wells) {
+      const n = vw.months.length; const last = vw.oil_bbl[n - 1]; const prev = vw.oil_bbl[Math.max(0, n - 2)]
+      const toT = (bbl: number) => +(bbl * 0.136).toFixed(1)
+      const daysInMonth = 30.4
+      const wo = add('Well', vw.name, { number: vw.name, kind: vw.name.includes('F-4') || vw.name.includes('F-5') ? 'нагнетательная' : 'добывающая', status: last > 0 ? 'в работе' : 'остановлена (конец добычи 2016)', debit: +(toT(last) / daysInMonth).toFixed(1), water_cut: last + vw.water_bbl[n - 1] > 0 ? +(100 * vw.water_bbl[n - 1] / (last + vw.water_bbl[n - 1])).toFixed(1) : 0, commissioned: `${vw.months[0]}-01`, trend_30d: prev > 0 ? +((last - prev) / prev * 100).toFixed(1) : 0 }, { subsidiary: dzoA.id, sources: ['volve'], markings: ['INTERNAL', 'PROD'], version: n, materializedAt: NOW - 3 * DAY, meta: { debit: { source: 'volve.production.BOPM', sourceTs: Date.UTC(2016, 8, 1) }, water_cut: { source: 'volve.production.BWPM' }, status: { source: 'volve.production.BOPM' } } })
+      wo.series = [
+        { key: 'oil', label: 'Добыча нефти', unit: 'т/мес', source: 'Volve (Equinor), BOPM', x: vw.months, y: vw.oil_bbl.map(toT) },
+        { key: 'water', label: 'Добыча воды', unit: 'т/мес', source: 'Volve (Equinor), BWPM', x: vw.months, y: vw.water_bbl.map(toT) },
+        { key: 'bhp', label: 'Забойное давление', unit: 'бар', source: 'Volve (Equinor), BHP', x: vw.months, y: vw.bhp },
+      ]
+      wells.push(wo)
+      link('located_on', wo.id, volvePad.id, { source: 'volve', markings: ['GEO'] })
     }
-    const pipeDefs: { code: string; points: [number, number][]; from: string; to: string; flow: number; hot: boolean; diameter: number }[] = [
-      { code: 'МН-1 «ЮГ-1 — ЛН-4 — НПС-1»', points: [[150, 130], [200, 210], [220, 280], [380, 300], [540, 300]], from: fields[0].id, to: nps1.id, flow: 1480, hot: false, diameter: 720 },
-      { code: 'МН-2 «СВ-2 — ТГ-3 — НПС-1»', points: [[310, 80], [380, 120], [430, 170], [500, 250], [540, 300]], from: fields[1].id, to: nps1.id, flow: 1210, hot: false, diameter: 530 },
-      { code: 'МН-3 «НПС-1 — НПС-2»', points: [[540, 300], [610, 330], [660, 370], [700, 385]], from: nps1.id, to: nps2.id, flow: 2690, hot: false, diameter: 1020 },
-      { code: 'МН-4 «НПС-2 — РВС-парк»', points: [[700, 385], [760, 420], [820, 460], [870, 480]], from: nps2.id, to: tanks[0].id, flow: 2600, hot: true, diameter: 1020 },
-      { code: 'ПН-5 «ТГ-3 — НПС-2» (промысловый)', points: [[430, 170], [520, 200], [620, 280], [700, 385]], from: fields[2].id, to: nps2.id, flow: 420, hot: false, diameter: 325 },
-    ]
-    const segments: SpObject[] = []
-    for (const p of pipeDefs) {
-      let len = 0
-      for (let i = 1; i < p.points.length; i++) len += Math.hypot(p.points[i][0] - p.points[i - 1][0], p.points[i][1] - p.points[i - 1][1])
-      const km = +(len * 0.42).toFixed(1)
-      const po = add('Pipeline', p.code.split(' ')[0], { code: p.code, diameter: p.diameter, length: km, design_pressure: 7.5, flow: p.flow, commissioned: rng.int(1988, 2016) }, { geo: p.points[Math.floor(p.points.length / 2)], subsidiary: dzoB.id, sources: ['opo_registry', 'sap_pm'], meta: { flow: metaSrc('scada.pipe.flow', 20) } })
-      pipelines.push({ id: po.id, points: p.points, flow: p.flow, hot: p.hot, code: p.code, unit: D.linearUnit })
+    // refineries (ru.wikipedia reference table) — synthetic load
+    const refineries: SpObject[] = []
+    for (const r of refineriesJson) {
+      const ro = add('Refinery', r.name, { name: r.name, owner: r.owner, capacity_mt: r.capacity_mt, depth: r.depth != null ? +(r.depth * 100).toFixed(1) : null, region: r.region, district: r.district, commissioned: r.commissioned, load_pct: +rng.float(68, 96).toFixed(1) }, { geo: project(r.lon, r.lat), subsidiary: dzoC.id, sources: ['open_ref', 'scada'], markings: ['INTERNAL'], version: rng.int(3, 40), materializedAt: NOW - rng.int(10, 600) * 1000, meta: { name: openMeta('refineries.name'), owner: openMeta('refineries.owner'), capacity_mt: openMeta('refineries.capacity_mt'), depth: openMeta('refineries.depth'), region: openMeta('refineries.region'), commissioned: openMeta('refineries.commissioned'), load_pct: metaSrc('scada.refinery.load', 600) } })
+      refineries.push(ro)
+      link('operates', dzoC.id, ro.id, { source: 'manual' })
+    }
+    // trunk pipelines with real waypoints → pump stations, terminals, segments
+    const npsByName = new Map<string, SpObject>(); const termByName = new Map<string, SpObject>()
+    const tanks: SpObject[] = []; const segments: SpObject[] = []; const pipeObjs: SpObject[] = []
+    const FOCUS = 'НПС-21 «Сковородино»', SECOND = 'ГНПС-1 «Тайшет»'
+    let focus: SpObject | null = null; let second: SpObject | null = null
+    for (const p of pipelinesJson) {
+      const pts = p.route.map(w => project(w.lon, w.lat))
+      const flow = Math.round(p.capacity_mt * 1000 / 365)
+      const po = add('Pipeline', p.name, { code: `${p.name} «${p.full}»`, operator: p.operator, capacity_mt: p.capacity_mt, diameter: p.diameter_mm, length: p.length_km, design_pressure: 6.4, flow, commissioned: p.commissioned }, { geo: pts[Math.floor(pts.length / 2)], subsidiary: dzoB.id, sources: ['open_ref', 'opo_registry', 'sap_pm'], markings: ['INTERNAL'], meta: { operator: openMeta('pipelines.operator'), capacity_mt: openMeta('pipelines.capacity_mt'), length: openMeta('pipelines.length_km'), diameter: openMeta('pipelines.diameter_mm'), commissioned: openMeta('pipelines.commissioned'), flow: metaSrc('scada.pipe.flow', 20) } })
+      pipeObjs.push(po)
+      pipelines.push({ id: po.id, points: pts, flow, hot: p.name === 'ВСТО-1', code: p.name, unit: D.linearUnit })
       link('operates', dzoB.id, po.id, { source: 'manual' })
-      link('connects', po.id, p.from, { source: 'opo_registry', markings: ['GEO'] }); link('connects', po.id, p.to, { source: 'opo_registry', markings: ['GEO'] })
-      const segCount = Math.max(4, Math.round(km / 15))
+      p.route.forEach((w, i) => {
+        const geo = pts[i]
+        if (w.kind === 'ГНПС' || w.kind === 'НПС') {
+          let o = npsByName.get(w.name)
+          if (!o) {
+            const isFocus = w.name === FOCUS
+            o = add('PumpStation', w.name, { code: w.name, pipeline: p.name, place: w.place, capacity: rng.pick([3600, 4200, 5000, 6000, 7200]), mode: isFocus ? 'повышенное давление' : 'номинальный', pressure_in: +rng.float(1.8, 3.2).toFixed(2), pressure_out: isFocus ? 6.92 : +rng.float(4.6, 6.1).toFixed(2), pressure_anomaly_score: isFocus ? 0.87 : +rng.float(0.02, 0.18).toFixed(2), open_incidents: isFocus ? 2 : 0 }, { id: isFocus ? 'nps_01J8SN000000000000000NPS21' : w.name === SECOND ? 'nps_01J8SN000000000000000NPS01' : undefined, geo, subsidiary: dzoB.id, sources: ['open_ref', 'scada', 'sap_pm'], version: isFocus ? 1204 : rng.int(100, 900), materializedAt: NOW - rng.int(2, 20) * 1000, meta: { pipeline: openMeta('pipelines.route'), place: openMeta('pipelines.route'), pressure_in: metaSrc('scada.nps.p_in', 6), pressure_out: metaSrc('scada.nps.p_out', 6), mode: metaSrc('scada.nps.mode', 6), pressure_anomaly_score: { derived_by: 'pipelines.anomaly_v3@3.2.1', sourceTs: NOW - 52000, rawRid: 'raw_scada_telemetry:88412' } } })
+            npsByName.set(w.name, o)
+            link('operates', dzoB.id, o.id, { source: 'manual' })
+            link('located_on', o.id, po.id, { source: 'opo_registry', markings: ['GEO'] })
+            if (isFocus) focus = o; if (w.name === SECOND) second = o
+          }
+          link('connects', po.id, o.id, { source: 'opo_registry', markings: ['GEO'] })
+        } else if (w.kind === 'терминал' || w.kind === 'узел') {
+          let t = termByName.get(w.name)
+          if (!t) {
+            t = add('Terminal', w.name, { name: w.name, kind: w.kind === 'терминал' ? 'морской терминал' : 'узел / граница', pipeline: p.name, capacity_mt: p.capacity_mt, stock_pct: +rng.float(35, 80).toFixed(1) }, { geo, subsidiary: dzoB.id, sources: ['open_ref', 'scada'], markings: ['INTERNAL'], version: rng.int(3, 60), materializedAt: NOW - rng.int(30, 900) * 1000, meta: { pipeline: openMeta('pipelines.route'), capacity_mt: openMeta('pipelines.capacity_mt'), stock_pct: metaSrc('scada.terminal.stock', 60) } })
+            termByName.set(w.name, t)
+            link('operates', dzoB.id, t.id, { source: 'manual' })
+            if (w.kind === 'терминал') for (let k = 0; k < 6; k++) { const tk = add('Tank', `РВС-${50000 + rng.int(1, 999)} · ${w.place}`, { code: `РВС-${k + 1}`, volume: rng.pick([20000, 30000, 50000]), level: +rng.float(22, 88).toFixed(1), product: 'нефть', temperature: +rng.float(8, 24).toFixed(1) }, { geo: [geo[0] + (k % 3) * 1.2 - 1.2, geo[1] + Math.floor(k / 3) * 1.2 + 2], subsidiary: dzoB.id, sources: ['scada', 'lims'], version: rng.int(200, 900), materializedAt: NOW - rng.int(2, 50) * 1000, meta: { level: metaSrc('scada.tank.level', 30) } }); tanks.push(tk); link('located_on', tk.id, t.id, { source: 'manual', markings: ['GEO'] }) }
+          }
+          link('connects', po.id, t.id, { source: 'opo_registry', markings: ['GEO'] })
+        } else if (w.kind === 'НПЗ') {
+          const key = w.name.split(' ')[0].replace('Ангарская', 'Ангарская'); const r = refineries.find(x => x.label.startsWith(key)) || refineries.find(x => x.label.includes(w.place))
+          if (r) link('connects', po.id, r.id, { source: 'opo_registry', markings: ['GEO'] })
+        }
+      })
+      const segCount = Math.max(3, Math.min(12, Math.round(p.length_km / 200)))
       for (let s = 0; s < segCount; s++) {
-        const so = add('PipelineSegment', `${po.label} км ${Math.round(s * km / segCount)}–${Math.round((s + 1) * km / segCount)}`, { km_from: +(s * km / segCount).toFixed(1), km_to: +((s + 1) * km / segCount).toFixed(1), category: rng.pick(['I', 'II', 'III', 'B']), defects: rng.chance(0.3) ? rng.int(1, 14) : 0 }, { subsidiary: dzoB.id, sources: ['vtd', 'sap_pm'] })
+        const so = add('PipelineSegment', `${p.name} км ${Math.round(s * p.length_km / segCount)}–${Math.round((s + 1) * p.length_km / segCount)}`, { km_from: Math.round(s * p.length_km / segCount), km_to: Math.round((s + 1) * p.length_km / segCount), category: rng.pick(['I', 'II', 'III', 'B']), defects: rng.chance(0.3) ? rng.int(1, 14) : 0 }, { subsidiary: dzoB.id, sources: ['vtd', 'sap_pm'] })
         segments.push(so)
         link('located_on', so.id, po.id, { source: 'opo_registry', markings: ['GEO'] })
       }
     }
+    if (!focus || !second) throw new Error('focus pump station missing in pipelines.json')
+    // camera home: centre of all projected assets
+    const all = [...fields, ...refineries, ...npsByName.values()].filter(o => o.geo)
+    const cx = all.reduce((a, o) => a + o.geo![0], 0) / all.length, cy = all.reduce((a, o) => a + o.geo![1], 0) / all.length
+    home = { x: +cx.toFixed(1), y: +cy.toFixed(1), z: 1.3 }
+    // holding-level open series (JODI, EIA)
+    const jodi = seriesJson.jodi; const steo = (seriesJson as unknown as { steo?: { months: string[]; values: number[]; source: string } | null }).steo
+    holding.series = [
+      ...(steo ? [{ key: 'steo', label: 'Добыча нефти и конденсата РФ (EIA STEO, оценка и прогноз)', unit: 'млн барр/сут', source: steo.source, x: steo.months, y: steo.values }] : []),
+      { key: 'prod', label: 'Добыча нефти РФ (JODI)', unit: 'млн т/мес', source: jodi.source, x: jodi.months, y: jodi.production_kt.map(v => v == null ? null : +(v / 1000).toFixed(2)) },
+      { key: 'ref', label: 'Переработка (поставка на НПЗ) РФ (JODI)', unit: 'млн т/мес', source: jodi.source, x: jodi.months, y: jodi.refinery_intake_kt.map(v => v == null ? null : +(v / 1000).toFixed(2)) },
+      { key: 'exp', label: 'Экспорт нефти РФ (JODI)', unit: 'млн т/мес', source: jodi.source, x: jodi.months, y: jodi.exports_kt.map(v => v == null ? null : +(v / 1000).toFixed(2)) },
+      { key: 'brent', label: 'Brent, среднемесячная (EIA)', unit: '$/барр', source: seriesJson.brent.source, x: seriesJson.brent_monthly.months, y: seriesJson.brent_monthly.values },
+    ]
+    holding.sources = ['manual', 'jodi', 'eia']
     const hosts: HostSpec[] = []
-    for (const w of wells) hosts.push({ host: w, share: 0.3 / wells.length, sub: dzoA.id, src: 'sap_pm' })
-    hosts.push({ host: nps1, share: 0.11, sub: dzoB.id, src: 'onec_toir' })
-    hosts.push({ host: nps2, share: 0.11, sub: dzoB.id, src: 'onec_toir' })
-    for (const t of tanks) hosts.push({ host: t, share: 0.2 / tanks.length, sub: dzoC.id, src: 'onec_toir' })
-    for (const s of segments) hosts.push({ host: s, share: 0.28 / segments.length, sub: dzoB.id, src: 'onec_toir' })
+    const npsList = [...npsByName.values()]; const termList = [...termByName.values()]
+    for (const o of npsList) hosts.push({ host: o, share: 0.42 / npsList.length, sub: dzoB.id, src: 'onec_toir' })
+    for (const o of refineries) hosts.push({ host: o, share: 0.25 / refineries.length, sub: dzoC.id, src: 'sap_pm' })
+    for (const o of termList) hosts.push({ host: o, share: 0.05 / termList.length, sub: dzoB.id, src: 'onec_toir' })
+    for (const o of tanks) hosts.push({ host: o, share: 0.05 / tanks.length, sub: dzoB.id, src: 'onec_toir' })
+    for (const o of segments) hosts.push({ host: o, share: 0.2 / segments.length, sub: dzoB.id, src: 'onec_toir' })
+    for (const o of wells) hosts.push({ host: o, share: 0.03 / wells.length, sub: dzoA.id, src: 'sap_pm' })
     return {
-      hosts, focusAsset: nps2, secondAsset: nps1,
-      focusEq: { cls: D.equipmentClasses[0], name: 'Насос-104', inv: '10004412', health: 0.41, id: 'eq_01J8ZK3V9Q7R6X4M2N1P0S8T7A', hours: 61240, onecKey: 'ОБ-004412 «Насос магистральный НМ-104»', passportKey: 'Паспорт НМ 7000-210 № 4412', erBefore: 'ОБ-004412' },
+      hosts, focusAsset: focus, secondAsset: second,
+      focusEq: { cls: D.equipmentClasses[0], name: 'Насос-104', inv: '10004412', health: 0.41, id: 'eq_01J8ZK3V9Q7R6X4M2N1P0S8T7A', hours: 61240, onecKey: 'ОБ-004412 «Насос магистральный НМ-10000-210»', passportKey: 'Паспорт НМ 10000-210 № 4412', erBefore: 'ОБ-004412' },
       sensorClasses: ['PUMP', 'COMPRESSOR', 'MOTOR'], focusSensorValue: 6.92, anomalyKind: 'pressure_rise',
-      focusContractSubject: 'ТОиР насосного оборудования НПС-2', secondContractSubject: 'Ремонт резервуаров', cartelSubjects: ['ТОиР насосного оборудования', 'Ремонт резервуаров', 'Поставка запорной арматуры', 'Изоляционные работы'],
+      focusContractSubject: 'ТОиР насосного оборудования НПС-21 «Сковородино»', secondContractSubject: 'Ремонт резервуаров', cartelSubjects: ['ТОиР насосного оборудования', 'Ремонт резервуаров', 'Поставка запорной арматуры', 'Изоляционные работы'],
       vehicleKinds: ['АЦ', 'Спецтехника', 'Вахтовый автобус', 'Бортовой', 'Кран'], withShipments: true,
     }
   }
@@ -672,7 +714,7 @@ export function generateWorld(seed = 2026, scale = 1, domainKey: DomainKey = 'oi
   const focusSensorIds: Record<string, string> = {}
   for (const [k, s] of Object.entries(focusSensors)) focusSensorIds[k] = s.id
   return {
-    domain: D, objects, byType, links, linksFrom, linksTo, pipelines, events, stats, scale,
+    domain: D, basemap, home, objects, byType, links, linksFrom, linksTo, pipelines, events, stats, scale,
     named: {
       holding: holding.id, dzo: dzo.map(d => d.id), focusAsset: focusAsset.id, secondAsset: L.secondAsset.id, focusEquipment: focusEq.id, focusSensor: focusSensor.id, focusSensors: focusSensorIds,
       focusAnomaly: focusAnomaly.id, focusOrg: vektor.id, focusOrg2: strela.id, focusPerson: ivanov.id, sharedProcs, cartelProcs, focusDoc: focusDoc.id, focusLetters, focusIncidents, focusOrders, focusContract: focusContract.id, purposes,

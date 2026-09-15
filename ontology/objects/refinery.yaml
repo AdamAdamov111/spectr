@@ -1,0 +1,81 @@
+# ontology/objects/refinery.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
+object_type: Refinery
+version: 1.0.0
+owner: team-refining
+description: Нефтеперерабатывающий завод (справочник по открытым данным)
+primary_key: npz_id
+backing_dataset: gold.refinery
+provenance: row
+freshness_slo: 30d
+markings: [INTERNAL]
+sources: [open_ref, sap_pm]
+properties: 
+  - name: name
+    label: Название
+    type: string
+    sources: [open_ref.refineries.name]
+    key: true
+  - name: owner
+    label: Контролирующий акционер
+    type: string
+    sources: [open_ref.refineries.owner]
+    key: true
+  - name: capacity_mt
+    label: Мощность переработки
+    type: number
+    unit: млн т/год
+    sources: [open_ref.refineries.capacity_mt]
+    key: true
+  - name: depth
+    label: Глубина переработки
+    type: percent
+    unit: %
+    sources: [open_ref.refineries.depth]
+    key: true
+  - name: region
+    label: Регион
+    type: string
+    sources: [open_ref.refineries.region]
+    key: true
+  - name: district
+    label: Федеральный округ
+    type: string
+    sources: [open_ref.refineries.district]
+  - name: commissioned
+    label: Год ввода
+    type: year
+    sources: [open_ref.refineries.commissioned]
+  - name: load_pct
+    label: Загрузка
+    type: percent
+    unit: %
+    markings: [PROD]
+    sources: [scada.refinery.load]
+    live: true
+links: 
+  - name: operates
+    direction: in
+    to: [Subsidiary]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: has_equipment
+    direction: out
+    to: [Equipment]
+    cardinality: "1:N"
+    markings: [INTERNAL]
+  - name: detected_on
+    direction: in
+    to: [Anomaly]
+    cardinality: "N:1"
+    markings: [INTERNAL]
+  - name: occurred_at
+    direction: in
+    to: [Incident]
+    cardinality: "N:1"
+    markings: [CONFIDENTIAL]
+  - name: connects
+    direction: in
+    to: [Pipeline, PowerLine]
+    cardinality: "N:M"
+    markings: [GEO]
+actions: [open_incident]

@@ -24,7 +24,10 @@ export interface SpObject {
   status?: 'ok' | 'pending_writeback' | 'rejected'
   crosswalk?: { system: string; key: string; score: number; rule: string }[]
   history?: HistoryEntry[]
+  series?: SeriesDef[]       // real time series attached to the object (open data)
 }
+
+export interface SeriesDef { key: string; label: string; unit: string; source: string; x: string[]; y: (number | null)[]; kind?: 'line' | 'bar' }
 
 export interface HistoryEntry {
   version: number

@@ -1,38 +1,68 @@
 # ontology/objects/field.yaml — generated from ui/src/data/ontology.ts (ontology 1.4.2)
 object_type: Field
-version: 1.0.0
+version: 1.1.0
 owner: team-geo
-description: Месторождение углеводородов
+description: Месторождение углеводородов (справочник по открытым данным)
 primary_key: fld_id
 backing_dataset: gold.field
 provenance: row
-freshness_slo: 1d
-markings: [CONFIDENTIAL]
-sources: [rosnedra, manual]
+freshness_slo: 30d
+markings: [INTERNAL]
+sources: [open_ref, rosnedra, manual]
 properties: 
-  - name: code
-    label: Код
-    type: string
-    key: true
   - name: name
     label: Название
     type: string
+    sources: [open_ref.fields.name]
     key: true
+  - name: region
+    label: Регион
+    type: string
+    sources: [open_ref.fields.region]
+    key: true
+  - name: operator
+    label: Оператор
+    type: string
+    sources: [open_ref.fields.operator]
+    key: true
+  - name: discovered
+    label: Год открытия
+    type: year
+    sources: [open_ref.fields.discovered]
+    key: true
+  - name: reserves_mt
+    label: Запасы (полные)
+    type: number
+    unit: млн т
+    markings: [GEO]
+    sources: [open_ref.fields.reserves_mt]
+    key: true
+  - name: remaining_mt
+    label: Остаточные извлекаемые
+    type: number
+    unit: млн т
+    markings: [GEO]
+    sources: [open_ref.fields.remaining_mt]
+  - name: production_ktd
+    label: Добыча
+    type: number
+    unit: тыс. т/сут
+    markings: [PROD]
+    sources: [open_ref.fields.production_ktd]
+    key: true
+  - name: cumulative_mt
+    label: Накопленная добыча
+    type: number
+    unit: млн т
+    sources: [open_ref.fields.cumulative_mt]
+  - name: data_year
+    label: Год данных
+    type: year
+    sources: [open_ref.fields.year]
   - name: license
     label: Лицензионный участок
     type: string
     markings: [GEO]
-    key: true
-  - name: reserves_abc1
-    label: Запасы ABC1
-    type: number
-    unit: тыс. т
-    markings: [CONFIDENTIAL, GEO]
-    masking: null_for_unauthorized
-  - name: operator
-    label: Оператор
-    type: string
-    key: true
 links: 
   - name: operates
     direction: in
@@ -41,7 +71,7 @@ links:
     markings: [INTERNAL]
   - name: located_on
     direction: in
-    to: [Well, WellPad, Feeder, Substation, PipelineSegment, LineSegment]
+    to: [Well, WellPad, Feeder, Substation, PipelineSegment, LineSegment, PumpStation, Terminal]
     cardinality: "N:1"
     markings: [GEO]
   - name: connects
